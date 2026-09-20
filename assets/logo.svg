@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Dream-RSI SDK independent project mark</title>
+  <desc id="desc">A branching discovery tree inside an open circular replay loop. Mint and warm ivory on deep charcoal.</desc>
+  <rect width="512" height="512" rx="112" fill="#111d25"/>
+  <path d="M374 149A164 164 0 1 0 416 271" fill="none" stroke="#75e0be" stroke-width="22" stroke-linecap="round"/>
+  <path d="m338 150 43 5-2-44" fill="none" stroke="#75e0be" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#f3f0e6" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 339V255M256 255l-69-64M256 255l69-64"/>
+  </g>
+  <circle cx="256" cy="340" r="20" fill="#f3f0e6"/>
+  <circle cx="256" cy="255" r="20" fill="#f3f0e6"/>
+  <circle cx="187" cy="191" r="20" fill="#f3f0e6"/>
+  <circle cx="325" cy="191" r="20" fill="#eebc73"/>
+</svg>

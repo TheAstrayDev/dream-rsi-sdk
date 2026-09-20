@@ -1,0 +1,25 @@
+name: Bug report
+description: Воспроизводимая ошибка SDK
+title: "[Bug]: "
+body:
+  - type: input
+    id: environment
+    attributes:
+      label: Окружение
+      description: ОС, версия Python и версия SDK или commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Минимальный пример
+      description: Самодостаточный код без токенов, паролей и приватных данных
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Ожидаемое и фактическое поведение
+    validations:
+      required: true

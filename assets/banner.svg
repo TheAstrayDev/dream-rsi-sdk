@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">Dream-RSI SDK — Alpha</title>
+  <desc id="desc">Independent exploration-policy research SDK. Explore, record, replay, improve. A branching tree connects recorded outcomes to a replay loop.</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#23323b" stroke-width="1"/></pattern>
+  </defs>
+  <rect width="1280" height="420" rx="24" fill="#111d25"/>
+  <rect x="785" y="1" width="494" height="418" rx="24" fill="url(#grid)"/>
+  <g transform="translate(59 52) scale(.18)">
+    <path d="M374 149A164 164 0 1 0 416 271" fill="none" stroke="#75e0be" stroke-width="22" stroke-linecap="round"/>
+    <path d="m338 150 43 5-2-44" fill="none" stroke="#75e0be" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M256 339V255M256 255l-69-64M256 255l69-64" fill="none" stroke="#f3f0e6" stroke-width="15" stroke-linecap="round"/>
+    <g fill="#f3f0e6"><circle cx="256" cy="340" r="20"/><circle cx="256" cy="255" r="20"/><circle cx="187" cy="191" r="20"/></g>
+    <circle cx="325" cy="191" r="20" fill="#eebc73"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="161" y="102" fill="#9db1ba" font-size="14" letter-spacing="3">INDEPENDENT RESEARCH / OPEN SOURCE</text>
+    <text x="72" y="199" fill="#f3f0e6" font-size="64" font-weight="700" letter-spacing="-2">Dream-RSI SDK</text>
+    <rect x="76" y="225" width="92" height="28" rx="14" fill="#eebc73"/>
+    <text x="122" y="244" text-anchor="middle" fill="#111d25" font-size="12" font-weight="700" letter-spacing="2">ALPHA</text>
+    <text x="72" y="302" fill="#c3d0d4" font-size="23">Explore. Record. Replay. Improve.</text>
+    <text x="72" y="364" fill="#7e969f" font-size="14">Python 3.11+  /  No runtime dependencies  /  Your agent, your evaluator</text>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M962 304V239L881 165M962 239l90-74M1052 165l69-56M1052 165l72 53M881 165l-47-56" stroke="#3e5a65" stroke-width="3"/>
+    <path d="M962 304V239l90-74 69-56" stroke="#75e0be" stroke-width="4"/>
+    <path d="M1117 279c-5 65-141 88-220 46-84-45-92-135-64-185" stroke="#eebc73" stroke-width="2" stroke-dasharray="7 8"/>
+    <path d="m825 155 8-16 9 14" stroke="#eebc73" stroke-width="2"/>
+  </g>
+  <g fill="#111d25" stroke="#45616c" stroke-width="3"><circle cx="881" cy="165" r="12"/><circle cx="834" cy="109" r="9"/><circle cx="1124" cy="218" r="9"/></g>
+  <g fill="#75e0be"><circle cx="962" cy="304" r="11"/><circle cx="962" cy="239" r="12"/><circle cx="1052" cy="165" r="12"/></g>
+  <circle cx="1121" cy="109" r="15" fill="#eebc73"/>
+  <text x="1040" y="378" fill="#7e969f" font-family="Arial, sans-serif" font-size="12" letter-spacing="2" text-anchor="middle">HISTORY BECOMES FEEDBACK</text>
+</svg>

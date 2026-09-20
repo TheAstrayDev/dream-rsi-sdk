@@ -1,0 +1,17 @@
+Dream-RSI SDK
+Copyright 2026 TheAstrayDev and contributors
+
+This is an independent, unofficial implementation inspired by publicly available
+research about Dream-RSI. The maintainer is not an employee of Google or Google
+DeepMind. This project is not a commercial development of Google and is not
+affiliated with, sponsored by, or endorsed by Google, Google DeepMind, or the
+authors of the research paper.
+
+Research attribution:
+Tong Zheng et al., "Dream-RSI: Recursive Self-Improvement through Evolving Worlds"
+arXiv:2609.14858, 2026. https://arxiv.org/abs/2609.14858
+Official research repository: https://github.com/zhengkid/Dream-RSI
+
+The SDK's logo and architecture illustration are original project assets, not
+official Google branding or official research figures. References to the research
+do not imply that this SDK reproduces its full implementation or reported results.

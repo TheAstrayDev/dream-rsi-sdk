@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dreamrsi"
+version = "0.1.0a1"
+description = "Independent, unofficial Dream-RSI-inspired Python SDK for exploration-policy replay and search (alpha)."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [
+    { name = "TheAstrayDev and contributors" },
+]
+keywords = ["ai", "agents", "exploration", "recursive-self-improvement", "dream-rsi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.0",
+    "ruff>=0.5",
+    "pyright>=1.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/TheAstrayDev/dream-rsi-sdk"
+Documentation = "https://github.com/TheAstrayDev/dream-rsi-sdk#readme"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dreamrsi"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+include = ["src"]
