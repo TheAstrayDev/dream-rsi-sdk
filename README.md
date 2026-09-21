@@ -54,7 +54,7 @@ iteratively revises policy code is still on the roadmap.
 | Distribution | Source or GitHub installation; not yet published to PyPI |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
-search and compare four policies. It reports whether replay caused any additional agent
+search and compare three policies. It reports whether replay caused any additional agent
 or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
 
 <a id="quickstart"></a>
@@ -233,6 +233,18 @@ copyable snapshots. Your adapter must isolate external files and processes betwe
 | Store | Save runs and evidence | InMemoryStore |
 
 <a id="comparison"></a>
+## Replace the orchestration pieces
+
+`DreamRSI(..., replay=my_engine, objective=my_objective, method=my_method)`
+accepts independent components. Defaults retain strict recorded-tree replay and the
+paper-inspired phase order. A custom objective changes policy ranking everywhere,
+including promotion; it does not replace the fixed task evaluator.
+
+See [extension contracts](docs/integration.md#replaceable-replay-objective-and-method)
+and the [architecture hardening tracker](docs/hardening.md). Generated policy code,
+secure execution and durable campaigns remain open work.
+
+
 ## Original research vs. this SDK
 
 Based on [section 3](https://arxiv.org/html/2609.14858v1#S3),
@@ -320,7 +332,8 @@ status. Tests need no paid APIs or model credentials.
 ```text
 src/dreamrsi/
 ├── adapters.py     # existing-agent integration
-├── runtime.py      # online exploration and improvement loop
+├── runtime.py      # online exploration and shared operations
+├── methods.py      # replaceable outer improvement loop
 ├── discovery/      # attempt trees and snapshots
 ├── replay/         # recorded-history replay
 ├── policies/       # seven built-in strategies
@@ -352,14 +365,3 @@ non-affiliation. The personal nature of this initiative does not change the lice
 ---
 
 <p align="center"><img src="assets/logo.svg" width="48" alt="Independent Dream-RSI SDK logo"><br><sub>Built independently. Grounded in recorded experience. Still evolving.</sub></p>
-
-## Replace the orchestration pieces
-
-`DreamRSI(..., replay=my_engine, objective=my_objective, method=my_method)`
-accepts independent components. Defaults retain strict recorded-tree replay and the
-paper-inspired phase order. A custom objective changes policy ranking everywhere,
-including promotion; it does not replace the fixed task evaluator.
-
-See [extension contracts](docs/integration.md#replaceable-replay-objective-and-method)
-and the [architecture hardening tracker](docs/hardening.md). Generated policy code,
-secure execution and durable campaigns remain open work.
