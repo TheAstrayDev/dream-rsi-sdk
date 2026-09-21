@@ -1,123 +1,100 @@
-# Руководство по интеграции
+# Integration guide
 
-Встраиваемый Python-слой для поиска решений и улучшения стратегии поиска по истории попыток.
-Python 3.11+, без обязательных сторонних зависимостей. Это самостоятельный SDK в стадии alpha.
+Dream-RSI SDK is an independent alpha Python library for exploration and historical
+policy replay. The core requires Python 3.11+ and no third-party runtime dependencies.
 
-## Установка и первый запуск
+## Choose an integration level
 
-Из папки проекта:
-
-```sh
-python -m pip install -e .
-python examples/01_toy_optimization.py
-```
-
-Самый короткий вариант — функция агента и функция оценки:
-
-```python
-from dreamrsi import Budget, DreamRSI
-
-rsi = DreamRSI(
-    agent=lambda task: task.upper(),
-    evaluator=lambda answer: float(len(answer)),
-    budget=Budget(model_calls=8),
-)
-result = rsi.run_sync("hello")
-print(result.best, result.best_score)
-```
-
-Обе функции могут быть синхронными или асинхронными. В приложении с работающим
-циклом событий используйте `await rsi.run(task)` или `await rsi.improve(task, rounds=5)`.
-Чем выше оценка, тем лучше. Для минимизации возвращайте отрицательное значение целевой функции.
-
-## Три уровня подключения
-
-| Интерфейс | Когда использовать | Что получает агент |
+| Interface | Behavior | Best fit |
 | --- | --- | --- |
-| `DreamRSI(agent=fn, evaluator=score)` | Независимые попытки решить задачу | Исходную задачу при каждой попытке |
-| `FunctionalAgentAdapter(step)` | Последовательное улучшение кандидата | Состояние выбранного родителя; результат становится следующим состоянием |
-| Объект `AgentAdapter` | Собственная память, инструменты, файлы, удалённые среды | Управление отдельными стадиями через пять методов |
+| `DreamRSI(agent=fn, evaluator=score)` | Calls `fn(task)` with the original task each time | Independent sampling |
+| `FunctionalAgentAdapter(step)` | Scores each output and uses it as the next branch state | Candidate refinement |
+| Full `AgentAdapter` object | Separates proposal, execution, observation, and state | Custom tools and workspaces |
 
-Пример улучшения состояния одной функцией:
+All integration methods may be synchronous or asynchronous. No inheritance is required.
+A callable object that also implements all adapter methods is treated as a full adapter.
 
-```python
-from dreamrsi import Budget, DreamRSI, FunctionalAgentAdapter
-from dreamrsi.policies import DepthFirstPolicy
+Use `await rsi.run(task)` or `await rsi.improve(task, rounds=5)` in async applications.
+Use `run_sync` or `improve_sync` only when no event loop is already running.
 
-def step(state, context):
-    return {"x": state["x"] * 0.5}
+## Full adapter contract
 
-rsi = DreamRSI(
-    adapter=FunctionalAgentAdapter(step),
-    evaluator=lambda candidate: -(candidate["x"] ** 2),
-    policy=DepthFirstPolicy(),
-    budget=Budget(model_calls=6),
-)
-result = rsi.run_sync({"x": 8.0})
-```
+1. `initial_state(task)` creates the starting snapshot.
+2. `propose(state, context)` creates a candidate.
+3. `execute(proposal, state, context)` runs it or returns it unchanged.
+4. `observe(execution, state)` extracts the value passed to the evaluator.
+5. `next_state(observation, state)` creates the snapshot for subsequent refinement.
 
-Полный адаптер реализует `initial_state(task)`, `propose(state, context)`,
-`execute(proposal, state, context)`, `observe(execution, state)` и
-`next_state(observation, state)`. Наследование от классов SDK не требуется.
-Все методы могут быть sync/async. Если объект одновременно вызываемый и реализует
-эти методы, SDK использует его как полный адаптер.
+The evaluator receives the observation and an optional context. It returns a number,
+an `Evaluation`, or an object with `.score`. Higher scores are better; negate a minimization
+objective. Exceptions and non-finite scores produce failed attempts, not fabricated successes.
+Inspect `result.metrics["failed_nodes"]` and error events.
 
-Состояние должно быть снимком данных, отделённым от клиента модели. Клиент,
-соединения и инструменты держите внутри адаптера. Перед попыткой SDK копирует
-состояние родителя. Для особых снимков можно реализовать `clone_state(state)`;
-состояния всё равно должны поддерживать `deepcopy` для хранения дерева.
-Для файловых сред передавайте идентификаторы неизменяемых снимков и создавайте
-рабочую копию внутри адаптера. Копирование Python-объекта не изолирует внешние файлы.
+The context contains `task`, `round`, `tree_size`, `parent_id`, and `parent_score`.
+Callable evaluators may omit context or accept it as a positional or keyword argument.
+User exceptions are not retried merely because they are `TypeError` exceptions.
 
-`context` содержит задачу, номер раунда, размер дерева, идентификатор и оценку родителя.
-Оценщик принимает кандидата и необязательный `context`; возвращает число, `Evaluation`
-или объект с `.score`. Исключение или нечисловая/бесконечная оценка записывают неудачную
-попытку, не создавая фиктивный успешный результат. Проверяйте `result.metrics` и события.
+## State ownership
 
-## Поведение и границы
+Store clients, connections, and tools in the adapter. Store copyable data snapshots in
+state. Before each attempt, the runtime copies the parent's state; an optional
+`clone_state(state)` method can customize that operation. Stored tree states must still
+support `deepcopy` for snapshots and persistence.
 
-- `run()` строит одно дерево. `improve()` чередует реальные запуски и replay.
-  История миров и выбранных политик сохраняется внутри экземпляра между вызовами.
-- По умолчанию оптимизатор перебирает параметры встроенных стратегий. Генерацию
-  кода стратегии моделью этот SDK пока не реализует; можно передать свой `policy_optimizer`.
-- Политики получают `PolicyView` и возвращают `PolicyDecision`. Решения проверяются
-  одинаково online и offline. Начало новой ветви — выбор корня; продолжение — выбор листа.
-  Повторяющиеся и недоступные идентификаторы вызывают `PolicyError`.
-- Каждая оценка политики использует отдельную глубокую копию её прототипа.
-  Случайные политики принимайте с явным `seed`, если нужна воспроизводимость.
-- `Budget` действует на один `run`, в том числе внутри `improve`.
-  Без явных ограничений действуют защитные пределы: 100 раундов, 500 узлов,
-  глубина 20 и число работников из `default_batch_size` (4).
-  `max_nodes` включает корень и должен быть не меньше 1. Нули для вызовов,
-  раундов, глубины или параллелизма запрещают соответствующую работу.
-- `model_calls` считает вызовы `propose`, `evaluator_calls` — вызовы оценщика SDK.
-  Вложенные обращения к API внутри пользовательских функций SDK не видит.
-  Счётчики находятся в `result.costs.model_calls` и `evaluator_calls`.
-  Денежные поля не заполняются без данных провайдера; `Budget(usd=...)` отклоняется явно.
-- Независимые попытки выполняются параллельно. Синхронные функции используют потоки
-  и должны быть безопасны для одновременного вызова либо запускаться с одним работником.
-  Тайм-аут отменяет асинхронное ожидание; уже выполняющийся поток или внешний запрос
-  требует собственного механизма отмены. Завершённые результаты текущего пакета сохраняются,
-  незавершённые отмечаются как `SKIPPED`.
-- Replay не вызывает агента и оценщик. Отсутствующее продолжение ничего не раскрывает,
-  но расходует раунд; коэффициенты оценки задаются в `DreamRSIConfig`.
-- `ReplayOnlyGate` использует историю обучения. `HoldoutGate` требует отдельно
-  полученных проверочных оценок; `improve()` не выдаёт обучающие оценки за проверочные.
-- `InMemoryStore` хранит запуски, узлы, события, оценки и версии принятых политик.
-  `get_tree(run_id)` восстанавливает дерево. Перезапуск процесса теряет память.
-  `export_run(..., fmt="json")` требует JSON-совместимых данных и не заменяет объекты строками.
-- Универсальность здесь означает независимость от провайдера и архитектуры модели.
-  Практическое подключение требует управляемого состояния и осмысленной функции оценки.
-  Готовые коннекторы ко всем фреймворкам и языкам не заявляются.
+For filesystem environments, store immutable snapshot identifiers and create a separate
+working copy inside the adapter. Copying a Python object does not isolate external files,
+processes, databases, or remote side effects.
 
-## Разработка
+## Budgets and accounting
 
-```sh
-python -m pip install -e ".[dev]"
-python -m pytest -q
-python -m ruff check src tests
-python -m pyright
-```
+A `Budget` applies to one `run`, including each run within `improve`.
+When fields are unset, the runtime uses safety limits: 100 rounds, 500 nodes, depth 20,
+and `default_batch_size` workers (4 by default).
 
-Подробности исследования, исходные дефекты и следующие задачи:
-[ARCHITECTURE.md](../ARCHITECTURE.md).
+`max_nodes` includes the root and must be at least 1. Zero call, round, depth, or concurrency
+limits prevent the corresponding work. Slots are reserved before scheduling a batch.
+
+`result.costs.model_calls` counts `propose` invocations, including failed calls.
+`evaluator_calls` counts invocations of the SDK evaluator. Nested provider requests are
+not visible to the SDK. Monetary fields are not populated automatically, and `Budget(usd=...)`
+is explicitly rejected. These counters are not token counts or dollar estimates.
+
+Independent attempts run concurrently. Synchronous integrations use worker threads;
+they must support concurrent calls or run with `max_parallelism=1`.
+A timeout cancels async waiting. Running threads and external services need their own
+cancellation. Completed results in the current batch are retained; unfinished attempts
+are marked `SKIPPED`.
+
+## Policies and replay
+
+Policies receive a `PolicyView` and return a `PolicyDecision`. Selecting the root opens
+a branch; selecting a leaf continues one. Duplicate and non-frontier IDs raise `PolicyError`.
+Online and replay execution share action validation.
+
+Each episode receives a deep copy of the policy prototype. Use an explicit seed for
+random policies when reproducibility matters. Runtime policy views currently contain
+frontier summaries, not the full observation and diagnostic history.
+
+Replay reads committed recorded transitions without calling the agent or evaluator.
+A missing continuation reveals nothing but consumes a decision round. Set objective
+coefficients with `DreamRSIConfig.replay_beta1` and `replay_beta2`.
+
+The default optimizer searches parameters of selected built-in policy families.
+Custom policies may use `ParameterSearchOptimizer` or implement `PolicyOptimizer`.
+LLM-based policy-code generation is not included.
+
+`ReplayOnlyGate` uses historical replay evidence. `HoldoutGate` requires independently
+obtained validation scores; `improve()` does not relabel training scores as validation.
+A full automatic holdout workflow remains planned.
+
+## Persistence and export
+
+`InMemoryStore` records runs, nodes, events, evaluations, and promoted policy versions.
+`get_tree(run_id)` reconstructs a stored run tree. The process loses in-memory data on exit.
+The world pool and selected policies stay on the same `DreamRSI` instance between calls.
+
+`export_run(result, path, fmt="json")` requires JSON-compatible data and does not stringify
+unsupported objects silently. It is an export, not a durable campaign-resume mechanism.
+`RunResult` contains live policy and tree objects; it is not a portable executable policy package.
+
+See the [architecture audit](../ARCHITECTURE.md) and [README](../README.md) for current limits.

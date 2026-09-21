@@ -1,11 +1,11 @@
-## Что меняется для пользователя
+## User-facing change
 
-<!-- Проблема, новое поведение, ограничения. -->
+<!-- Problem, new behavior, and limitations. -->
 
-## Проверка
+## Validation
 
-<!-- Команды и результаты; при исправлении ошибки — регрессионный тест. -->
+<!-- Commands and results; include a regression test for behavior fixes. -->
 
-## Связанные задачи
+## Related work
 
-<!-- Необязательно: issue или пункт Roadmap. -->
+<!-- Optional: issue or roadmap item. -->

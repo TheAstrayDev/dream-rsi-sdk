@@ -1,26 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- English documentation, issue templates, and contributor guidance.
+- A no-key replay lab that compares policies and reports additional live calls.
+- Early-adopter feedback template and a practical first-user launch plan.
+
 ## 0.1.0a1 — 2026-09-20
 
-Первый публичный alpha-снимок независимого SDK.
+First public alpha snapshot of the independent SDK.
 
-### Рабочая основа
+### Working foundation
 
-- Sync/async интеграции через функции и адаптеры состояния.
-- Дерево попыток, фиксируемые снимки и JSON-экспорт.
-- Строгий replay с общими правилами допустимых действий.
-- Семь встроенных стратегий, перебор параметров и gates принятия политик.
-- Лимиты вызовов, узлов, глубины, времени и параллелизма.
-- In-memory хранение, события, 33 регрессионных теста.
+- Sync/async callable and stateful agent integrations.
+- Discovery trees, committed snapshots, and JSON export.
+- Strict replay with shared action validation.
+- Seven built-in policies, parameter search, and promotion gates.
+- Call, node, depth, time, and concurrency limits.
+- In-memory storage, events, and 33 regression tests.
 
-### Оформление и прозрачность
+### Project presentation
 
-- Собственные векторные логотип, обложка и схема архитектуры.
-- README с установкой, примерами, сравнением с исследованием и Roadmap.
-- Явное указание независимости от Google и неполноты реализации.
-- Лицензия Apache-2.0, руководство для участников и CI.
+- Original vector logo, banner, and architecture diagram.
+- README covering installation, examples, research comparison, and roadmap.
+- Explicit non-affiliation with Google and implementation limitations.
+- Apache-2.0 license, contributor guidance, and CI.
 
-### Ещё не реализовано
+### Not implemented yet
 
-LLM-разработчик кода политик, рабочая песочница, автоматическая независимая валидация,
-долговременное восстановление кампаний и провайдерский учёт денег.
+LLM policy-code development, executable sandbox, automatic independent validation,
+durable campaign recovery, and provider-level dollar accounting.

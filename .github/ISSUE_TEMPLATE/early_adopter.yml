@@ -1,0 +1,33 @@
+name: Early adopter feedback
+description: Share your first integration attempt and what blocked you.
+title: "[Feedback]: "
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: What are you building?
+      description: Describe your task, agent framework and how you score candidates. Do not include secrets or private data.
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: How far did you get?
+      options:
+        - Ran the replay demo
+        - Connected my own agent
+        - Ran a repeat experiment
+        - Could not install or run
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What worked, and what blocked you?
+      description: Include Python version, OS and SDK commit when relevant.
+    validations:
+      required: true
+  - type: input
+    id: discovery
+    attributes:
+      label: Where did you hear about the project? (optional)

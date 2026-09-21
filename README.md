@@ -1,98 +1,72 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Dream-RSI SDK Alpha — независимый SDK: Explore. Record. Replay. Improve." width="100%">
+  <img src="assets/banner.svg" alt="Dream-RSI SDK Alpha — independent exploration-policy SDK" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/TheAstrayDev/dream-rsi-sdk/actions/workflows/ci.yml"><img src="https://github.com/TheAstrayDev/dream-rsi-sdk/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/status-alpha-eebc73?style=flat-square" alt="Alpha">
   <img src="https://img.shields.io/badge/Python-3.11%2B-75e0be?style=flat-square" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/runtime_dependencies-0-75e0be?style=flat-square" alt="Без обязательных runtime-зависимостей">
+  <img src="https://img.shields.io/badge/runtime_dependencies-0-75e0be?style=flat-square" alt="Zero runtime dependencies">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-c3d0d4?style=flat-square" alt="Apache 2.0"></a>
 </p>
 
-<p align="center"><strong>Ваш агент. Ваша оценка. Стратегия поиска, которая учится на истории попыток.</strong></p>
+<p align="center"><strong>Bring your agent. Record its search. Replay alternative exploration strategies.</strong></p>
 <p align="center">
-  <a href="#quickstart">Быстрый старт</a> ·
-  <a href="#architecture">Как устроено</a> ·
-  <a href="#comparison">Сравнение с исследованием</a> ·
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#architecture">How it works</a> ·
+  <a href="#comparison">Research comparison</a> ·
   <a href="#roadmap">Roadmap</a> ·
-  <a href="docs/integration.md">Интеграция</a>
+  <a href="docs/integration.md">Integration guide</a>
 </p>
 
 > [!IMPORTANT]
-> **Это независимый, неофициальный проект. Не продукт Google.**
+> **An independent, unofficial project. Not a Google product.**
 >
-> Я — [TheAstrayDev](https://github.com/TheAstrayDev), независимый разработчик. Я не сотрудник
-> Google или Google DeepMind. Этот репозиторий — моя личная исследовательская инициатива,
-> **не коммерческая разработка компании Google**, не официальный SDK и не проект,
-> поддерживаемый или одобренный авторами исследования.
+> I am [TheAstrayDev](https://github.com/TheAstrayDev), an independent developer.
+> I am not an employee of Google or Google DeepMind. This repository is my personal
+> research initiative, **not a commercial development by Google**, an official SDK,
+> or a project sponsored or endorsed by Google or the research authors.
 >
-> Я попытался собрать Dream-RSI SDK по доступной открытой информации: статье, сайту
-> и материалам авторов. Планирую развивать его дальше, проверять идеи на практике
-> и постепенно сокращать разрыв между этой реализацией и описанным методом.
+> I have attempted to build a Dream-RSI SDK from publicly available information:
+> the paper, project website, and authors' materials. I plan to keep improving it,
+> testing it in practice, and closing the gap between this implementation and the research.
 
-## Зачем нужен этот проект
+## What is this?
 
-**Dream-RSI SDK** — небольшой Python-слой для управления поиском решений поверх существующего
-ИИ-агента. Вы подключаете генерацию кандидатов и оценку результата; библиотека организует
-попытки, сохраняет дерево поиска и сравнивает стратегии на записанной истории.
+**Dream-RSI SDK** is a small Python orchestration layer for exploring candidate solutions
+and comparing exploration policies on recorded experience. You supply the agent and evaluator;
+the SDK handles attempts, discovery trees, historical replay, and policy selection.
 
-Цель — сделать такое управление поиском простым для встраивания в разные архитектуры:
-от обычной функции до агента с памятью, инструментами и отдельной рабочей средой.
-Ядро не зависит от провайдера модели и не требует API-ключей само по себе.
+It is designed for developers who already have a **generate → evaluate → refine** loop
+and want to experiment with how their search branches, batches work, and stops.
+The core has no dependency on a model provider or agent framework.
 
-**Alpha означает рабочую основу, а не полное воспроизведение исследования.** Сейчас реализованы
-дерево, строгий replay, адаптеры и цикл выбора политик. Главный упрощённый участок —
-оптимизатор: он перебирает параметры встроенных стратегий, а не пишет новый код при помощи LLM.
+**Alpha means a working foundation, not a complete reproduction of the paper.**
+The current optimizer searches built-in policy parameters. An LLM that writes and
+iteratively revises policy code is still on the roadmap.
 
-| Основа | Состояние |
+| At a glance | Current state |
 | :--- | :--- |
-| Язык и зависимости | Python 3.11+ · 0 обязательных сторонних зависимостей |
-| Подключение | Sync/async функции · адаптер состояния · полный протокол агента |
-| Проверка качества | 33 теста · Ruff · Pyright · сборка и установка wheel |
-| Версия | `0.1.0a1` · API ещё может изменяться |
-| Дистрибуция | Из исходников или GitHub; публикация на PyPI пока не выполнена |
+| Runtime | Python 3.11+ · zero required third-party dependencies |
+| Integration | Sync/async callables · stateful function adapter · full agent protocol |
+| Validation | 33 regression tests · Ruff · Pyright · wheel build and installation |
+| Version | `0.1.0a1` · APIs may change |
+| Distribution | Source or GitHub installation; not yet published to PyPI |
 
-<a id="architecture"></a>
-## Как устроен цикл
-
-Идея Dream-RSI — использовать прошлый поиск как среду для проверки новых стратегий.
-Реальные запуски создают историю; replay читает записанные переходы; выбранная политика
-управляет следующим запуском. Модель агента и оценщик при этом остаются прежними.
-См. [официальное объяснение метода](https://dream-rsi.com/#method).
-
-<p align="center">
-  <img src="assets/architecture.svg" alt="Три стадии: online-поиск с агентом и оценщиком → записанные replay-миры → сравнение и выбор политики → следующий online-запуск. Разработчик кода политик на LLM, независимая валидация, долговременные кампании и песочница запланированы." width="100%">
-</p>
-
-*Собственная схема SDK, сопоставленная с Figure 1 и разделом 3
-[статьи Dream-RSI](https://arxiv.org/html/2609.14858v1#S3).
-Это не официальная иллюстрация Google. Зелёным обозначены работающие компоненты,
-пунктиром — запланированные.*
-
-1. **Online explore.** Политика выбирает узлы; агент создаёт кандидатов, оценщик возвращает
-   результат. Попытки выполняются с ограничениями и записываются в `DiscoveryTree`.
-2. **Replay worlds.** Завершённое дерево фиксируется и становится `ReplayWorld`.
-   Повторная оценка политики не вызывает агента и оценщик.
-3. **Dream & select.** Текущая политика и кандидаты проходят один набор миров.
-   `PromotionGate` решает, принимать ли новую политику. Следующий запуск расширяет историю.
-
-Replay видит только записанные результаты. Он не умеет предсказывать, что случилось бы
-в неизученной ветви. Рост replay-оценки на той же истории не гарантирует роста качества
-следующего реального запуска.
+**Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
+search and compare four policies. It reports whether replay caused any additional agent
+or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
 
 <a id="quickstart"></a>
-## Установка
+## Install and try
 
-Нужны **Python 3.11+** и Git. Рекомендуется отдельное окружение.
+You need **Python 3.11+** and Git. Use a virtual environment:
 
 ```bash
 git clone https://github.com/TheAstrayDev/dream-rsi-sdk.git
 cd dream-rsi-sdk
 python -m venv .venv
 ```
-
-Активируйте окружение:
 
 ```bash
 # Linux / macOS
@@ -104,29 +78,37 @@ source .venv/bin/activate
 .venv\Scripts\Activate.ps1
 ```
 
-Затем установите SDK:
-
 ```bash
 python -m pip install -e .
+python examples/02_replay_lab.py
+```
+
+The demo prints a table of recorded best scores, probes, and decision rounds, followed by
+`Additional agent calls during replay: 0` and `Additional evaluator calls during replay: 0`.
+No model account or API key is needed. These are SDK call counts, not dollar savings.
+
+For the full online/replay loop, run:
+
+```bash
 python examples/01_toy_optimization.py
 ```
 
-Либо установите прямо из репозитория без рабочего checkout:
+You can also install directly from GitHub:
 
 ```bash
 python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@main"
 ```
 
-Последняя команда берёт текущую ветку `main`. Для воспроизводимой установки замените
-`main` на конкретный commit SHA. Имя Python-пакета и импорта — **`dreamrsi`**.
+This installs the current `main` branch. Replace `main` with a commit SHA to pin your
+installation. The package and import name are **`dreamrsi`**.
 
-## Первый запуск: две функции
+## Start with two functions
 
 ```python
 from dreamrsi import Budget, DreamRSI
 
 def agent(task):
-    # Здесь может быть вызов вашей модели или существующего агента.
+    # Replace this with your existing model or agent call.
     return task.upper()
 
 def evaluate(answer):
@@ -140,11 +122,11 @@ print(result.best_score)           # 5.0
 print(result.costs.model_calls)    # 4
 ```
 
-Это пример подключения, а не демонстрация роста качества: детерминированная функция
-возвращает один ответ. В простом режиме каждая попытка получает **исходную задачу**.
-Для уточнения предыдущего результата используйте адаптер состояния.
+This demonstrates the interface, not a quality improvement: the deterministic agent
+returns the same answer each time. In simple callable mode, every attempt receives
+**the original task**. Use a stateful adapter to refine a previous result.
 
-## Улучшение кандидата по шагам
+## Refine a candidate
 
 ```python
 from dreamrsi import Budget, DreamRSI, FunctionalAgentAdapter
@@ -165,14 +147,13 @@ print(result.best)        # {'x': 0.125}
 print(result.best_score)  # -0.015625
 ```
 
-Результат `refine` становится состоянием следующей попытки в этой ветви.
-**Большая оценка всегда лучше**; для минимизации здесь используется `-x²`.
+Each output becomes the next state in its branch. **Higher scores are always better**;
+this example uses `-x²` to express a minimization objective.
 
-## Цикл поиска и replay
+## Run the improvement loop
 
 ```python
 import asyncio
-
 from dreamrsi import Budget, DreamRSI, FunctionalAgentAdapter
 
 async def main():
@@ -189,20 +170,44 @@ async def main():
 asyncio.run(main())
 ```
 
-Каждый вызов `run` внутри `improve` имеет свой бюджет: пример разрешает до **60 вызовов**
-`propose` за три запуска. Отсутствие принятой новой политики — допустимый результат.
-В уже работающем event loop вызывайте `await rsi.run(...)` / `await rsi.improve(...)`
-непосредственно, без `asyncio.run` или `run_sync`.
+The budget applies to **each online run**: this example permits up to 60 `propose` calls
+across three runs. No promotion is a valid outcome. Inside an existing event loop,
+use `await rsi.run(...)` or `await rsi.improve(...)` directly instead of the sync wrappers.
 
-## Встраивание в свою архитектуру
+<a id="architecture"></a>
+## How it works
 
-| Уровень | Интерфейс | Подходит для |
+Dream-RSI turns previous discovery runs into replay environments for exploration policies.
+The agent and evaluator stay fixed while the search strategy changes.
+See the [authors' method overview](https://dream-rsi.com/#method).
+
+<p align="center">
+  <img src="assets/architecture.svg" alt="Online exploration creates discovery trees; committed trees become replay worlds; policies are evaluated and selected for the next run. LLM policy development, validation, durable campaigns and a sandbox are planned." width="100%">
+</p>
+
+*An original SDK diagram mapped to Figure 1 and section 3 of the
+[Dream-RSI paper](https://arxiv.org/html/2609.14858v1#S3), not an official Google figure.
+Green denotes implemented components; the dashed row denotes planned work.*
+
+1. **Online explore:** select root or leaf nodes, run bounded parallel attempts, evaluate
+   their results, and record states and observations in a `DiscoveryTree`.
+2. **Replay worlds:** commit the tree and wrap it as a `ReplayWorld`. Replaying policies
+   uses recorded transitions without calling the discovery agent or evaluator.
+3. **Dream and select:** compare the incumbent and candidate policies on the same world
+   pool. An evidence gate selects a policy for the next online run.
+
+Replay cannot predict outcomes outside the recorded tree. Improvement on fixed historical
+replay scores does not guarantee improvement on the next real run.
+
+## Fit it into your architecture
+
+| Integration level | Interface | Use case |
 | :--- | :--- | :--- |
-| Минимальный | `agent(task)` + `evaluator(candidate)` | Независимых попыток и существующего API модели |
-| Состояние | `FunctionalAgentAdapter(step)` | Уточнения ответа, кода, параметров или плана |
-| Полный контроль | `AgentAdapter` | Собственной памяти, исполнения инструментов и снимков среды |
+| Minimal | `agent(task)` + `evaluator(candidate)` | Independent attempts with an existing model API |
+| Stateful | `FunctionalAgentAdapter(step)` | Refining an answer, program, parameter set, or plan |
+| Full control | `AgentAdapter` | Custom memory, tools, execution, and workspace snapshots |
 
-Полный адаптер не требует наследования. Достаточно реализовать пять методов:
+The full adapter needs no inheritance. Implement five methods:
 
 ```text
 initial_state(task)
@@ -213,85 +218,88 @@ initial_state(task)
                       └─ next_state(observation, state)
 ```
 
-Методы поддерживают sync/async. Клиент модели храните **в адаптере**, а состояние —
-как копируемый снимок данных. Независимые ветви не должны изменять общую рабочую среду.
-Для внешних файлов или процессов изоляцию обеспечивает ваш адаптер.
+Methods may be sync or async. Keep model clients **inside the adapter** and state in
+copyable snapshots. Your adapter must isolate external files and processes between branches.
 
-[Полное руководство: состояние, context, бюджеты и экспорт →](docs/integration.md)
+[Read the integration guide: state, context, budgets, cancellation, and export →](docs/integration.md)
 
-### Основные точки расширения
-
-| Компонент | Назначение | Готовая реализация |
+| Extension point | Responsibility | Included implementations |
 | :--- | :--- | :--- |
-| Agent | Создание и исполнение кандидатов | Два функциональных адаптера; ваш объект по протоколу |
-| Evaluator | Оценка результата | Callable, Numeric, Composite |
-| ExplorationPolicy | Какие ветви продолжать | Balanced, Greedy, BreadthFirst, DepthFirst, Random, EpsilonGreedy, FixedParallel |
-| PolicyOptimizer | Кандидаты стратегий | DeterministicPolicyOptimizer, ParameterSearchOptimizer |
-| PromotionGate | Условия принятия политики | ReplayOnlyGate, HoldoutGate, CompositeGate |
-| Store | Запуски, узлы, события и версии | InMemoryStore |
+| Agent | Generate and execute candidates | CallableAgentAdapter, FunctionalAgentAdapter |
+| Evaluator | Score results | Callable, Numeric, Composite |
+| ExplorationPolicy | Choose branches | Balanced, Greedy, BreadthFirst, DepthFirst, Random, EpsilonGreedy, FixedParallel |
+| PolicyOptimizer | Propose strategies | DeterministicPolicyOptimizer, ParameterSearchOptimizer |
+| PromotionGate | Decide whether to adopt | ReplayOnlyGate, HoldoutGate, CompositeGate |
+| Store | Save runs and evidence | InMemoryStore |
 
 <a id="comparison"></a>
-## Исследование Dream-RSI и этот SDK
+## Original research vs. this SDK
 
-Сравнение опирается на [раздел 3](https://arxiv.org/html/2609.14858v1#S3),
-[приложение B.2](https://arxiv.org/html/2609.14858v1#A2.SS2) и
-[сайт авторов](https://dream-rsi.com/). Это сопоставление **описанного метода с локальным кодом**,
-а не аудит совместимости с официальной реализацией. На 20 сентября 2026 года
-[официальный репозиторий](https://github.com/zhengkid/Dream-RSI) сообщает о подготовке кода к выпуску.
+Based on [section 3](https://arxiv.org/html/2609.14858v1#S3),
+[appendix B.2](https://arxiv.org/html/2609.14858v1#A2.SS2), and the
+[project website](https://dream-rsi.com/). This compares the **published method with this
+SDK's code**, not compatibility with an official implementation. On September 20, 2026,
+the [official repository](https://github.com/zhengkid/Dream-RSI) stated that code was being prepared for release.
 
-**✓ Есть** — работает и проверяется. **◐ Частично** — есть явное упрощение. **○ План** — не реализовано.
+**✓ Implemented** · **◐ Partial** · **○ Planned**
 
-| В оригинальном методе | Здесь | Реализация / отличие |
+| Research component | SDK | Implementation or difference |
 | :--- | :---: | :--- |
-| Фиксированные discovery-agent и evaluator | ✓ | Независимые адаптеры; SDK не обновляет веса модели |
-| Дерево попыток с состояниями и результатами | ✓ | DiscoveryTree, снимки Python-данных; внешняя среда — ответственность адаптера |
-| Выбор root / leaf и группировка попыток | ✓ | Единый контракт решений, проверка допустимости, параллельный запуск |
-| Replay записанных переходов | ✓ | StrictReplay; скрытые результаты не раскрываются заранее |
-| Растущий пул исторических миров | ◐ | Накапливается в памяти экземпляра; нет восстановления после перезапуска |
-| Политика использует раскрытые наблюдения | ◐ | Пока доступны сводки frontier; нет полного контекста наблюдений и диагностики |
-| Оценка качества, работы и параллелизма | ✓ | Формула раздела 3, настраиваемые β₁ и β₂; не все метрики приложения B.2 |
-| Последовательное редактирование кода политики LLM-агентом | ○ | Сейчас только перебор параметров; генерация программ запланирована |
-| Сравнение с текущей политикой и повторный online-запуск | ✓ | Improve-цикл и evidence gate на одном пуле миров |
-| Эксперименты: алгоритмы, математика, GPU-ядра | ○ | Численный пример и тесты SDK; результаты статьи не воспроизведены |
+| Fixed discovery agent and evaluator | ✓ | Separate integrations; model weights are not updated |
+| Discovery trees with states and outcomes | ✓ | Python snapshots; external workspace isolation belongs to the adapter |
+| Root/leaf selection and batched work | ✓ | Shared action validation and concurrent online execution |
+| Replay of recorded transitions | ✓ | StrictReplay; unrevealed outcomes stay hidden |
+| Growing historical world pool | ◐ | In memory only; no restart recovery |
+| Decisions based on revealed observations | ◐ | Frontier summaries, not full observations and diagnostics |
+| Quality/work/parallelism objective | ✓ | Section 3 formula with configurable β₁/β₂; not all appendix B.2 metrics |
+| LLM-driven iterative policy-code revision | ○ | Parameter search today; code generation is planned |
+| Incumbent comparison and online redeployment | ✓ | Improve loop and evidence gate on a shared world pool |
+| Algorithm, math, and GPU experiments | ○ | Toy demos and SDK tests; published results have not been reproduced |
 
-Отдельно от сравнительной таблицы: `HoldoutGate` и `SandboxExecutor` — точки развития
-этой библиотеки. Наличие gate или протокола не означает готовую независимую валидацию
-или действующую песочницу.
+`HoldoutGate` and `SandboxExecutor` are SDK extension points. A gate or protocol does not
+constitute an automatic independent validation pipeline or a working code sandbox.
 
-## Ограничения Alpha
+## Alpha limitations
 
-- **Нет обещания универсального ускорения.** Возможность подключить архитектуру не доказывает
-  эффективность метода для неё. Нужны управляемое состояние, качественная оценка и измерения.
-- **Нет обучения весов и генератора кода политик.** Текущий оптимизатор меняет параметры;
-  он не воспроизводит весь процесс разработки стратегий из статьи.
-- **Бюджет применяется к одному run.** Счётчики отражают вызовы адаптера/оценщика,
-  а не скрытые обращения к API внутри них. Денежный бюджет пока отклоняется явно.
-- **Хранилище в памяти.** JSON-экспорт сохраняет совместимые данные; произвольные клиентские
-  объекты и полный перезапуск кампаний не поддерживаются.
-- **Отмена зависит от интеграции.** SDK отменяет async-ожидание, но не может принудительно
-  остановить уже работающий синхронный поток или внешний сервис.
-- **Независимая проверка не автоматизирована.** Обучающие replay-оценки не выдаются за holdout.
-  Данные для HoldoutGate должен подготовить вызывающий код.
+- **No universal speedup claim.** A compatible interface is not evidence of effectiveness
+  on every AI architecture. Meaningful evaluation and controlled experiments are essential.
+- **No weight training or LLM policy developer.** Built-in optimization changes parameters.
+- **Per-run budgets.** Counters measure SDK calls, not hidden provider requests. USD budgets
+  are explicitly rejected until provider-level accounting exists.
+- **In-memory storage.** JSON export requires compatible data. Durable campaign recovery is absent.
+- **Integration-dependent cancellation.** Async waits can be cancelled; running threads and
+  external services need their own cancellation mechanisms.
+- **No automatic holdout pipeline.** Training replay scores are not passed off as validation.
+  The caller must supply independent evidence to HoldoutGate.
 
 <a id="roadmap"></a>
 ## Roadmap
 
-Порядок отражает приоритеты, а не обещанные даты релизов. Критерий прогресса — рабочий код
-и воспроизводимая проверка, а не количество объявленных интеграций.
+These are priorities, not promised release dates. Progress means working code and
+reproducible checks rather than a growing list of framework names.
 
-| Этап | Результат | Критерий готовности |
+| Phase | Deliverable | Completion criterion |
 | :--- | :--- | :--- |
-| **01 · Foundation** ✓ | Адаптеры, дерево, replay, политики, бюджеты, тесты | Рабочие примеры и проверки контрактов |
-| **02 · Observable policies** ○ | Полные раскрытые наблюдения, диагностика и исторический контекст | Тесты отсутствия доступа к будущим данным |
-| **03 · Reliable campaigns** ○ | Долговременное хранение, возобновление, общие лимиты | Кампания продолжается после перезапуска без потери истории |
-| **04 · Evidence before promotion** ○ | Отдельные validation-миры и отчёты | Train и validation разделены; решения воспроизводимы |
-| **05 · Dreaming with code** ○ | LLM-разработчик политик и изолированное исполнение | Несколько ревизий с replay-feedback; недопустимый код не запускается в основном процессе |
-| **06 · Real integrations** ○ | Примеры с реальными агентами и учёт провайдерских затрат | Публичные сравнения при одинаковых бюджетах и документированных условиях |
-| **07 · Stable SDK** ○ | Стабилизация API, версионирование данных, публикация пакета | Проверки совместимости и понятный путь миграции |
+| **01 · Foundation** ✓ | Adapters, trees, replay, policies, budgets, tests | Executable examples and contract checks |
+| **02 · Observable policies** ○ | Revealed observations, diagnostics, historical context | Tests exclude future-information leakage |
+| **03 · Reliable campaigns** ○ | Persistent storage, resume, campaign-wide limits | Resume after a restart without losing history |
+| **04 · Evidence before promotion** ○ | Independent validation worlds and reports | Separate train/validation evidence and reproducible decisions |
+| **05 · Dreaming with code** ○ | LLM policy developer and isolated execution | Multiple revisions with replay feedback; generated code stays outside the main process |
+| **06 · Real integrations** ○ | Real-agent examples and provider cost accounting | Public comparisons under equal, documented budgets |
+| **07 · Stable SDK** ○ | Stable APIs, versioned data, package publication | Compatibility checks and migration guidance |
 
-Подробный технический план и история исправлений — в [ARCHITECTURE.md](ARCHITECTURE.md).
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the technical audit and implementation priorities.
 
-## Разработка и проверка
+## Help shape the next iteration
+
+Already building a generate/evaluate loop? Try one task with your own adapter and
+[tell me what blocked you](https://github.com/TheAstrayDev/dream-rsi-sdk/issues/new?template=early_adopter.yml).
+Useful feedback includes the interface you needed, your scoring method, and a minimal
+reproduction. Positive results, failures, and "this does not fit my workflow" are all useful.
+
+For fixes and larger changes, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -300,57 +308,47 @@ python -m ruff check src tests
 python -m pyright
 ```
 
-Сборка дистрибутива:
-
 ```bash
 python -m pip install build
 python -m build
 ```
 
-Локально проверены **33 теста**, Ruff, Pyright, сборка и установка wheel на Python 3.14.6.
-CI настроен на Python 3.11–3.14 в Linux и Python 3.14 в Windows; актуальное состояние
-показывает [вкладка Actions](https://github.com/TheAstrayDev/dream-rsi-sdk/actions).
-Тесты не используют платные API и не требуют ключей моделей.
+The initial public commit passed CI on Python 3.11–3.14 on Linux and 3.14 on Windows.
+See [Actions](https://github.com/TheAstrayDev/dream-rsi-sdk/actions) for the current commit's
+status. Tests need no paid APIs or model credentials.
 
 ```text
 src/dreamrsi/
-├── adapters.py     # подключение существующего агента
-├── runtime.py      # online-поиск и improve-цикл
-├── discovery/      # дерево попыток и снимки
-├── replay/         # воспроизведение записанной истории
-├── policies/       # семь встроенных стратегий
-├── optimization/   # кандидаты стратегий и версии
-├── promotion/      # решения по доказательствам
-├── evaluation/     # функции оценки и композиция
-├── storage/        # in-memory хранилище
-├── events/         # события и callbacks
-├── models/         # общие структуры данных
-└── protocols/      # контракты расширения
+├── adapters.py     # existing-agent integration
+├── runtime.py      # online exploration and improvement loop
+├── discovery/      # attempt trees and snapshots
+├── replay/         # recorded-history replay
+├── policies/       # seven built-in strategies
+├── optimization/   # candidate policies and version management
+├── promotion/      # evidence-based adoption decisions
+├── evaluation/     # scoring and composition
+├── storage/        # in-memory storage
+├── events/         # events and callbacks
+├── models/         # shared data types
+└── protocols/      # extension contracts
 ```
 
-## Участие
+## Research credit and project ownership
 
-Приветствуются воспроизводимые bug reports, небольшие исправления, предложения по API
-и реальные примеры интеграции. Начните с [CONTRIBUTING.md](CONTRIBUTING.md).
-Измеренные результаты полезнее общих заявлений об «улучшении интеллекта».
-
-## Источники и авторство
-
-Исследовательская идея принадлежит **Tong Zheng и соавторам** — исследователям Google,
-Google DeepMind, University of Maryland и University of Virginia.
-Оригинальные материалы:
+The research is by **Tong Zheng and coauthors**, affiliated with Google, Google DeepMind,
+the University of Maryland, and the University of Virginia. Original materials:
 
 - [Dream-RSI: Recursive Self-Improvement through Evolving Worlds — arXiv:2609.14858](https://arxiv.org/abs/2609.14858)
-- [Официальная страница проекта](https://dream-rsi.com/)
-- [Официальный репозиторий zhengkid/Dream-RSI](https://github.com/zhengkid/Dream-RSI)
+- [Official project website](https://dream-rsi.com/)
+- [Official research repository](https://github.com/zhengkid/Dream-RSI)
 
-Автор независимого SDK — **[TheAstrayDev](https://github.com/TheAstrayDev)**.
-Пожалуйста, различайте ссылку на исследование и ссылку на эту реализацию.
-Логотип и схема в этом репозитории созданы для SDK и не являются символикой Google.
+This independent SDK is maintained by **[TheAstrayDev](https://github.com/TheAstrayDev)**.
+Please distinguish research citations from references to this implementation.
+The logo and architecture illustration are original SDK assets, not Google branding.
 
-Код распространяется по [Apache License 2.0](LICENSE). Уведомление о независимом
-происхождении — [NOTICE](NOTICE). Личный характер инициативы не меняет условия лицензии.
+Licensed under [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for attribution and
+non-affiliation. The personal nature of this initiative does not change the license terms.
 
 ---
 
-<p align="center"><img src="assets/logo.svg" width="48" alt="Логотип независимого Dream-RSI SDK"><br><sub>Built independently. Grounded in recorded experience. Still evolving.</sub></p>
+<p align="center"><img src="assets/logo.svg" width="48" alt="Independent Dream-RSI SDK logo"><br><sub>Built independently. Grounded in recorded experience. Still evolving.</sub></p>

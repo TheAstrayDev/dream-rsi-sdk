@@ -1,117 +1,98 @@
-# Dream-RSI: исследование и состояние SDK
+# Dream-RSI: research mapping and SDK architecture
 
-Дата аудита: 20 сентября 2026 года.
+Initial audit: September 20, 2026. Documentation updated September 21, 2026.
 
-## Первоисточники
+## Research basis
 
-Изучены [статья и приложения](https://arxiv.org/html/2609.14858v1),
-[сайт авторов](https://dream-rsi.com/) и
-[официальный репозиторий](https://github.com/zhengkid/Dream-RSI).
-На дату проверки репозиторий сообщает, что реализация готовится к выпуску.
-Локальный SDK нельзя считать официальным кодом или проверенным воспроизведением экспериментов.
+Sources: [paper and appendices](https://arxiv.org/html/2609.14858v1),
+[project website](https://dream-rsi.com/), and
+[official research repository](https://github.com/zhengkid/Dream-RSI).
+At the initial audit, the official repository stated that code was being prepared for release.
+This SDK is neither the official implementation nor a verified reproduction of its experiments.
 
-Метод улучшает программу управления поиском поверх фиксированного агента и оценщика.
-История попыток становится деревом: корень хранит исходное состояние, потомки — результаты.
-Новая политика проходит по записанным переходам, получая только раскрытую часть истории.
-За пределами записанного дерева replay не предсказывает результаты.
-Оценка учитывает качество, количество попыток и их группировку:
+The method improves search orchestration around a fixed discovery agent and evaluator.
+Recorded attempts form a tree; policies replay its transitions using revealed information.
+Replay does not predict outcomes beyond recorded support. The section 3 objective is
 `V = best_score - beta1 * N + beta2 * N / max(1, K)`.
-Стратегии сравниваются на одном наборе миров; победитель собирает следующую историю.
-Гарантия выбора относится только к средней replay-оценке на фиксированном наборе.
-Она не гарантирует улучшения следующего реального запуска.
-В статье проверяются задачи алгоритмической, математической и GPU-оптимизации;
-это не доказательство эффективности для любой архитектуры ИИ.
+Selection compares policies on a fixed world pool. Its historical-score guarantee does
+not guarantee better outcomes in the next real run.
 
-## Цель именно этой библиотеки
+## SDK design goal
 
-Предоставить малый слой Python-оркестрации, которому не нужны знания о внутреннем
-устройстве модели. Приложение отвечает за создание кандидатов, состояние среды и
-оценку; библиотека — за распределение попыток, историю и сравнение политик.
-Простая интеграция должна запускаться двумя функциями. Полный контроль должен
-добавляться через адаптеры без изменения ядра.
+Provide a small Python orchestration layer independent of a model's internals.
+Applications own candidate generation, execution state, and scoring. The SDK owns search
+allocation, recording, replay, and policy comparison. A basic integration should need only
+two functions, with explicit adapters for more control.
 
-## Что было в папке до исправлений
+## Initial implementation audit
 
-Проект содержал `pyproject.toml`, дерево модулей `src/dreamrsi` и один численный пример.
-README и тесты отсутствовали. Каталог не являлся Git-репозиторием; доступной истории
-изменений, веток или коммитов не было. Файлы журналов и временные данные не использовались
-как спецификация SDK.
+The starting project contained modules and one numerical example, but no README or tests.
+Several subsystems were incompatible scaffolds: a protocol or class name did not imply
+an executable feature. The initial example failed at the first policy decision.
 
-Концептуальная декомпозиция уже была полезной: runtime, discovery, replay, policies,
-optimization, evaluation, promotion, storage, events, models и protocols.
-Но несколько частей были несовместимыми заготовками. Наличие класса или протокола
-не означало наличия работающей возможности.
-
-| Обнаруженный дефект | Внесённое исправление |
+| Original defect | Correction |
 | --- | --- |
-| Все политики обращались к отсутствующему `node_id`; Balanced — ещё и к `visit_count` | Используются реальные поля единого `NodeSummary` |
-| Runtime, модели и протоколы описывали разные классы одних сущностей | Типы перенесены в `models`; прежние рабочие пути импорта используют их же |
-| Обычная функция-оценщик не работала; встроенные оценщики использовали несуществующие поля и статусы | Поддержаны функции и объекты, sync/async, проверка конечной оценки |
-| Численный пример повторно получал исходную задачу вместо результата родителя | Добавлен `FunctionalAgentAdapter`; пример действительно продолжает состояние |
-| Объявленные бюджеты вызовов и времени не применялись, нули терялись | Лимиты проверяются перед запуском пакета; попытки считаются до обращения |
-| Параллелизм означал последовательный цикл | Независимые расширения запускаются совместно, порядок записи стабилен |
-| Replay отфильтровывал границы по полной истории и принимал скрытые узлы | Видимая граница строится по раскрытому дереву, действия валидируются |
-| Порядок множества и состояние RNG меняли результаты replay | Стабильный порядок создания и отдельная копия политики для каждого эпизода |
-| Коэффициенты replay из конфигурации игнорировались | Передаются во все публичные пути replay |
-| Promotion читал другие ключи, создавал некорректные решения и подменял holdout | Исправлен контракт доказательств; отсутствие независимых данных явно отражается |
-| Оптимизатор и менеджер версий использовали несуществующие аргументы | Исправлены параметры, идентификаторы, статусы и переходы версий |
-| `get_tree` всегда возвращал `None`; runtime не сохранял результаты в store | Запуски, узлы, события и оценки сохраняются, дерево восстанавливается |
-| `commit` не защищал от изменения через выданные ссылки | Фиксация и чтение завершённого дерева отделяют изменяемые данные копиями |
-| Экспорт терял состояние и наблюдения | Данные узлов сохраняются; JSON не маскирует неподдерживаемые типы |
-| Число узлов выдавалось за число раундов; вызовы — за денежную стоимость | Отдельные счётчики и корректное число раундов |
-| Пример обещал гарантированное online-улучшение | Формулировка ограничена replay на той же истории |
+| Policies used missing `node_id` and `visit_count` fields | Use the actual shared NodeSummary fields |
+| Runtime and models defined incompatible duplicate types | Shared model classes with execution-module reexports |
+| Callable evaluators and built-in evaluation constructors failed | Sync/async function support, valid fields, finite-score checks |
+| Toy refinement repeatedly received the original task | FunctionalAgentAdapter passes the selected parent's state |
+| Call/time budgets were ignored and zero limits lost | Check limits before scheduling and count attempted calls |
+| Parallelism was a sequential loop | Concurrent attempts with stable batch recording order |
+| Replay hid boundaries using unrevealed information | Build eligible nodes from the revealed tree and validate actions |
+| Set iteration and mutable RNG state changed replay results | Stable creation order and isolated policy prototypes |
+| Replay configuration coefficients were ignored | Pass coefficients through all public replay paths |
+| Promotion used inconsistent evidence and fabricated holdout inputs | Correct evidence keys, decision fields, and missing-evidence handling |
+| Optimizers and version management used nonexistent arguments | Correct constructors, identifiers, and status transitions |
+| Runtime did not persist results; get_tree always returned None | Save runs, nodes, events, evaluations, and reconstruct trees |
+| Committed trees remained mutable through returned references | Snapshot copies and isolated committed reads |
+| Export discarded states and observations | Preserve node data and reject unsupported JSON values |
+| Nodes were reported as rounds, calls as monetary cost | Separate call counters and actual decision-round counts |
+| Example claimed guaranteed online improvement | Limit the claim to selection on fixed replay history |
 
-## Как читать код
+## Module map
 
-1. `adapters.py`, `protocols/agent.py`: граница интеграции.
-2. `runtime.py`: запуск, ограничения, события, накопление миров, выбор политики.
-3. `models/`: общие значения и контракты данных.
-4. `discovery/`: дерево, фиксация, сериализация, структурные инварианты.
-5. `replay/` и `_policy.py`: воспроизведение и общий контроль действий.
-6. `policies/`, `optimization/`, `promotion/`: выбор узлов, создание кандидатов стратегий,
-   решение о замене действующей стратегии.
-7. `evaluation/`, `storage/`, `events/`: оценка, хранение, наблюдаемость.
-8. `tests/`: исполняемые требования к контрактам и найденным регрессиям.
+1. `adapters.py`, `protocols/agent.py`: integration boundary.
+2. `runtime.py`: online runs, budgets, events, worlds, and policy selection.
+3. `models/`: shared data values and contracts.
+4. `discovery/`: trees, commits, serialization, and structural invariants.
+5. `replay/`, `_policy.py`: replay and shared action validation.
+6. `policies/`, `optimization/`, `promotion/`: strategy decisions and adoption.
+7. `evaluation/`, `storage/`, `events/`: scoring, persistence interfaces, observability.
+8. `tests/`: regression checks and executable integration contracts.
 
-`ReplayWorldRecord` — запись метаданных мира; `ReplayWorld` — исполняемый симулятор.
-Это разные назначения, а не два взаимозаменяемых объекта. `RunResult` хранит живые
-объекты политики и дерева; для файлового вывода предусмотрен `export_run`.
+`ReplayWorldRecord` stores metadata; `ReplayWorld` is an executable replay environment.
+They serve different purposes. `RunResult` holds live policy and tree objects; use
+`export_run` for a JSON data export.
 
-## Что ещё необходимо для полноценного продукта
+## Remaining engineering work
 
-- Итеративный разработчик политик: генерация новой программы с обратной связью
-  между ревизиями. Сейчас есть только перебор параметров и расширяемый протокол.
-- Реальная независимая валидация: отдельный набор миров, сбор доказательств и отчёт
-  об обобщении. Один `HoldoutGate` сам по себе не создаёт такой набор.
-- Долговременное хранилище и восстановление кампании после перезапуска,
-  включая сериализацию конфигурации и исполняемых политик.
-- Провайдерский учёт токенов и денег, общий бюджет кампании вместо лимита каждого run.
-- Изолированное исполнение сгенерированного кода. `SandboxExecutor` сейчас только
-  протокол; его нельзя представлять как работающую песочницу.
-- Доступ пользовательской политики к полным раскрытым наблюдениям и диагностике,
-  а не только к сводкам frontier, а также явный контракт исторического контекста.
-- Проверки на реальных адаптерах разных архитектур и сравнительные эксперименты
-  с одинаковыми бюджетами. Рабочий численный пример этого не заменяет.
-- Нагрузочные измерения: копирование больших состояний и полное построение
-  наблюдения на каждом шаге требуют отдельной оптимизации.
+- Iterative policy-code development with feedback between revisions. Current optimization
+  searches parameters and exposes a custom optimizer protocol.
+- Independent validation worlds and generalization reports. HoldoutGate alone does not
+  create the dataset, splits, or validation process.
+- Durable storage and resume, including policy/configuration serialization.
+- Provider token/dollar accounting and campaign-wide limits.
+- Isolated generated-code execution. SandboxExecutor is a protocol only.
+- Full revealed observations, diagnostics, and a historical-context contract for policies.
+- Real adapters and equal-budget comparative experiments across architectures.
+- Performance measurements for large states and repeated view construction.
 
-Приоритет развития: сначала стабильные контракты и проверяемые ограничения,
-затем богатый контекст политики и независимая валидация, затем генерация программ
-и конкретные интеграции. Добавление названий фреймворков без рабочего адаптера
-не приближает библиотеку к универсальному встраиванию.
+Prioritize reliable contracts, observable policy context, and independent evidence before
+adding program generation and framework integrations. Framework names without working
+adapters do not make the SDK more universal.
 
-## Проверка внесённых изменений
+## Validation evidence
 
-Проверено в отдельном `.venv` на Python 3.14.6:
+The initial public commit passed 33 regression tests on Python 3.11–3.14 on Linux and
+Python 3.14 on Windows in [CI](https://github.com/TheAstrayDev/dream-rsi-sdk/actions/runs/35523999053).
+Ruff, Pyright, and package builds also passed. Locally, a wheel was installed and imported
+from site-packages in isolated Python mode.
 
-- 33 теста проходят, включая все семь политик, нулевые бюджеты, ошибки оценки,
-  параллелизм, тайм-аут с частичным результатом, принятие политики и отсутствие
-  поддельных holdout-данных, повторяемость replay и сохранность снимков.
-- Ruff: без замечаний. Pyright: 0 ошибок и 0 предупреждений.
-- Собраны sdist и wheel; wheel установлен и проверен в изолированном режиме Python,
-  с импортом из `site-packages`, без подстановки папки `src`.
-- Численный пример завершает пять циклов: 135 вызовов агента, 135 оценок,
-  лучшая оценка около `-0.002940`. В этом запуске принятия новых политик не было;
-  отдельный тест проверяет случай, где принятие действительно происходит.
+The tests cover all seven policies, zero budgets, evaluation failures, concurrency,
+timeouts with partial results, promotion, absent holdout evidence, replay reproducibility,
+and snapshot isolation. No real external model was used.
 
-Другие версии Python и реальные внешние модели в этом аудите не запускались.
+The numerical example completed five cycles with 135 agent and 135 evaluator calls;
+one observed run reached approximately -0.002940 without policy promotion. A separate
+regression test exercises actual promotion. The replay lab reports measured call deltas;
+its toy scores must not be presented as evidence of LLM cost or quality improvements.
