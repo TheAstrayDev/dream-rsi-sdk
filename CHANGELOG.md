@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added injectable replay engines, trajectory objectives and outer methods.
+- Extracted the default improvement loop into `DefaultMethod`.
+- Added regression coverage for extension routing, ranking, promotion and invalid scores.
+- Recorded architecture gaps and acceptance criteria in `docs/hardening.md`.
+
 - English documentation, issue templates, and contributor guidance.
 - A no-key replay lab that compares policies and reports additional live calls.
 - Early-adopter feedback template and a practical first-user launch plan.

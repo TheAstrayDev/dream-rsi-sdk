@@ -110,6 +110,12 @@ class DreamRSI:
         Resource constraints.
     config : DreamRSIConfig, optional
         Fine-tuning parameters.
+    replay : ReplayEngine, optional
+        Offline evaluation engine. Defaults to StrictReplay.
+    objective : Objective, optional
+        Overrides trajectory scoring consistently across replay and selection.
+    method : Method, optional
+        Owns the complete outer loop. Defaults to DefaultMethod.
     callbacks : list[Callback], optional
         Lifecycle callback objects.
     """
@@ -126,6 +132,9 @@ class DreamRSI:
         budget: Budget | None = None,
         config: DreamRSIConfig | None = None,
         callbacks: list[Callback] | None = None,
+        replay: Any | None = None,
+        objective: Any | None = None,
+        method: Any | None = None,
     ) -> None:
         # Resolve adapter
         if adapter is not None:
@@ -149,6 +158,14 @@ class DreamRSI:
 
         self._config = config or DreamRSIConfig()
         self._budget = budget
+        self._replay_engine = replay
+        self._objective = objective
+        self._method = method
+        for component, operation in (
+            (replay, "replay"), (objective, "score"), (method, "improve"),
+        ):
+            if component is not None and not callable(getattr(component, operation, None)):
+                raise ConfigurationError(f"Component must implement {operation}")
         if budget is not None and budget.max_nodes == 0:
             raise ConfigurationError("max_nodes includes the root; use at least 1")
         if budget is not None and budget.usd is not None:
@@ -428,198 +445,15 @@ class DreamRSI:
         await self._emit(EventType.RUN_COMPLETED, run_id=run_id)
         return result
 
-    async def improve(
-        self,
-        task: Any,
-        rounds: int = 5,
-    ) -> RunResult:
-        """Run the full Dream-RSI recursive improvement loop.
-
-        This is the main entry point for Dream-RSI.  It alternates between:
-        1. Online exploration (building discovery trees)
-        2. Offline dreaming (replay + policy improvement)
-
-        Parameters
-        ----------
-        task : Any
-            The task to solve.
-        rounds : int
-            Number of outer RSI iterations.  Each iteration:
-            - Deploys current policy online → collects a new tree
-            - Converts tree to replay world
-            - Generates challenger policies
-            - Evaluates challengers via replay
-            - Promotes the best if it improves
-
-        Returns
-        -------
-        RunResult
-            Contains the best solution found, champion policy,
-            all worlds, policy history, and cost accounting.
-        """
+    async def improve(self, task: Any, rounds: int = 5) -> RunResult:
+        """Delegate the complete outer loop to the configured Method."""
         if isinstance(rounds, bool) or not isinstance(rounds, int) or rounds < 1:
             raise ConfigurationError("rounds must be a positive integer")
-        campaign_id = str(uuid.uuid4())
-        await self._emit(EventType.CAMPAIGN_STARTED, data={"campaign_id": campaign_id})
+        if self._method is None:
+            from dreamrsi.methods import DefaultMethod
 
-        all_costs = CostRecord()
-        best_overall_score: float | None = None
-        best_overall_result: Any = None
-        best_node_id: str | None = None
-        best_tree = None
-
-        for t in range(1, rounds + 1):
-            logger.info("Dream-RSI round %d/%d", t, rounds)
-
-            # ── Phase 1: Online exploration ──
-            run_result = await self.run(task)
-
-            # Accumulate costs
-            all_costs.model_calls += run_result.costs.model_calls
-            all_costs.online_agent_cost += run_result.costs.online_agent_cost
-            all_costs.evaluator_calls += run_result.costs.evaluator_calls
-            all_costs.online_evaluator_cost += run_result.costs.online_evaluator_cost
-
-            if run_result.best_score is not None and (
-                best_overall_score is None or run_result.best_score > best_overall_score
-            ):
-                best_overall_score = run_result.best_score
-                best_overall_result = run_result.best
-                best_node_id = run_result.best_node_id
-                best_tree = run_result.tree
-
-            # ── Phase 2: Convert tree to replay world ──
-            if run_result.tree is not None:
-                world = ReplayWorld(run_result.tree)
-                self._worlds.append(world)
-                await self._emit(
-                    EventType.WORLD_CREATED,
-                    data={"world_id": world.world_id, "tree_size": run_result.tree.size},
-                )
-
-            # ── Phase 3: Dreaming — policy improvement ──
-            if self._frozen or len(self._worlds) < 1:
-                continue
-
-            await self._emit(EventType.DREAM_STARTED, data={"round": t})
-
-            current_policy = self._champion_policy or self._get_policy()
-            optimizer = self._get_optimizer()
-            replay = StrictReplay(
-                max_rounds=self._config.replay_max_rounds,
-                max_parallelism=self._config.replay_max_parallelism,
-                beta1=self._config.replay_beta1,
-                beta2=self._config.replay_beta2,
-            )
-
-            # Replay current policy across all worlds to get baseline scores
-            incumbent_scores: list[float] = []
-            incumbent_trajectories: list[ReplayTrajectory] = []
-            for world in self._worlds:
-                traj = await replay.replay(world, current_policy, policy_id="incumbent")
-                incumbent_trajectories.append(traj)
-                if traj.replay_score is not None:
-                    incumbent_scores.append(traj.replay_score)
-                all_costs.replay_compute_ms += traj.elapsed_ms
-
-            if len(incumbent_scores) != len(self._worlds):
-                await self._emit(
-                    EventType.DREAM_COMPLETED, data={"round": t, "reason": "unscored_world"}
-                )
-                continue
-
-            incumbent_avg = (
-                sum(incumbent_scores) / len(incumbent_scores)
-                if incumbent_scores
-                else float("-inf")
-            )
-
-            # Generate challenger policies
-            challengers = await optimizer.generate(
-                current_policy, incumbent_trajectories, self._budget
-            )
-
-            # Evaluate each challenger via replay
-            best_challenger = None
-            best_challenger_avg = incumbent_avg
-
-            for challenger in challengers:
-                challenger_scores: list[float] = []
-                for world in self._worlds:
-                    traj = await replay.replay(world, challenger, policy_id="challenger")
-                    if traj.replay_score is not None:
-                        challenger_scores.append(traj.replay_score)
-                    all_costs.replay_compute_ms += traj.elapsed_ms
-
-                if challenger_scores and len(challenger_scores) == len(self._worlds):
-                    avg = sum(challenger_scores) / len(challenger_scores)
-                    if avg > best_challenger_avg:
-                        best_challenger_avg = avg
-                        best_challenger = challenger
-
-            # ── Phase 4: Promotion ──
-            if best_challenger is not None and best_challenger_avg > incumbent_avg:
-                promotion = self._get_promotion()
-
-                from dreamrsi.models.policy import PolicyVersion
-
-                inc_version = PolicyVersion(name="incumbent")
-                chl_version = PolicyVersion(name="challenger")
-
-                evidence = {
-                    "incumbent_avg_score": incumbent_avg,
-                    "challenger_avg_score": best_challenger_avg,
-                    "num_worlds": len(self._worlds),
-                }
-
-                decision = await promotion.evaluate(inc_version, chl_version, evidence)
-
-                from dreamrsi.models.promotion import PromotionOutcome
-
-                if decision.outcome == PromotionOutcome.PROMOTED:
-                    await self._save_policy(best_challenger)
-                    self._champion_policy = best_challenger
-                    self._policy_history.append(best_challenger)
-                    await self._emit(
-                        EventType.POLICY_PROMOTED,
-                        data={
-                            "round": t,
-                            "incumbent_score": incumbent_avg,
-                            "challenger_score": best_challenger_avg,
-                        },
-                    )
-                    logger.info(
-                        "Policy promoted: %.4f → %.4f",
-                        incumbent_avg,
-                        best_challenger_avg,
-                    )
-                else:
-                    await self._emit(
-                        EventType.POLICY_REJECTED,
-                        data={"round": t, "reason": decision.reason},
-                    )
-
-            await self._emit(EventType.DREAM_COMPLETED, data={"round": t})
-
-        await self._emit(EventType.CAMPAIGN_COMPLETED, data={"campaign_id": campaign_id})
-
-        return RunResult(
-            run_id=campaign_id,
-            best=best_overall_result,
-            best_score=best_overall_score,
-            best_node_id=best_node_id,
-            tree=best_tree,
-            policy=self._get_policy(),
-            champion_policy=self._champion_policy,
-            rounds=rounds,
-            costs=all_costs,
-            metrics={
-                "total_worlds": len(self._worlds),
-                "policy_promotions": len(self._policy_history),
-            },
-            policy_history=list(self._policy_history),
-            worlds=list(self._worlds),
-        )
+            self._method = DefaultMethod()
+        return await invoke(self._method.improve, self, task, rounds=rounds)
 
     def run_sync(self, task: Any) -> RunResult:
         """Synchronous wrapper around ``run()``."""
@@ -695,19 +529,35 @@ class DreamRSI:
 
     # ── Replay API ─────────────────────────────────────────────
 
+    def _get_replay(self):
+        if self._replay_engine is None:
+            self._replay_engine = StrictReplay(
+                max_rounds=self._config.replay_max_rounds,
+                max_parallelism=self._config.replay_max_parallelism,
+                beta1=self._config.replay_beta1,
+                beta2=self._config.replay_beta2,
+            )
+        return self._replay_engine
+
     async def replay(
-        self,
-        world: ReplayWorld,
-        policy: Any,
+        self, world: ReplayWorld, policy: Any, policy_id: str = "",
     ) -> ReplayTrajectory:
-        """Replay a policy against a world."""
-        r = StrictReplay(
-            max_rounds=self._config.replay_max_rounds,
-            max_parallelism=self._config.replay_max_parallelism,
-            beta1=self._config.replay_beta1,
-            beta2=self._config.replay_beta2,
-        )
-        return await r.replay(world, policy)
+        """Evaluate through the injected engine and optional global objective.
+
+        The objective changes policy selection, not the fixed task evaluator.
+        Only the resulting trajectory is exposed; hidden world outcomes are not.
+        """
+        trajectory = await invoke(self._get_replay().replay, world, policy, policy_id=policy_id)
+        # Do not mutate an engine's cached trajectory when applying an objective.
+        trajectory = copy.deepcopy(trajectory)
+        if self._objective is not None:
+            result = await invoke(self._objective.score, copy.deepcopy(trajectory))
+            if not math.isfinite(result.score):
+                raise ConfigurationError("Objective score must be finite")
+            trajectory.replay_score = result.score
+        if trajectory.replay_score is not None and not math.isfinite(trajectory.replay_score):
+            raise ConfigurationError("Replay score must be finite")
+        return trajectory
 
     async def compare_policies(
         self,
@@ -718,18 +568,12 @@ class DreamRSI:
 
         Returns dict mapping policy index to average replay score.
         """
-        r = StrictReplay(
-            max_rounds=self._config.replay_max_rounds,
-            max_parallelism=self._config.replay_max_parallelism,
-            beta1=self._config.replay_beta1,
-            beta2=self._config.replay_beta2,
-        )
         results: dict[int, float] = {}
 
         for i, policy in enumerate(policies):
             scores: list[float] = []
             for world in worlds:
-                traj = await r.replay(world, policy, policy_id=f"policy_{i}")
+                traj = await self.replay(world, policy, policy_id=f"policy_{i}")
                 if traj.replay_score is not None:
                     scores.append(traj.replay_score)
             if scores and len(scores) == len(worlds):

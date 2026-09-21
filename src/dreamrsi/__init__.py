@@ -39,6 +39,7 @@ from dreamrsi.errors import (
     SandboxError,
     StorageError,
 )
+from dreamrsi.methods import DefaultMethod
 from dreamrsi.runtime import (
     Budget,
     CampaignResult,
@@ -55,6 +56,7 @@ __all__ = [
     "FunctionalAgentAdapter",
     # Core
     "DreamRSI",
+    "DefaultMethod",
     "DreamRSIConfig",
     "Budget",
     "RunResult",

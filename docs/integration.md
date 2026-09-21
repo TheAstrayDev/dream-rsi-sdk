@@ -98,3 +98,50 @@ unsupported objects silently. It is an export, not a durable campaign-resume mec
 `RunResult` contains live policy and tree objects; it is not a portable executable policy package.
 
 See the [architecture audit](../ARCHITECTURE.md) and [README](../README.md) for current limits.
+
+## Replaceable replay, objective and method
+
+All three components are optional constructor arguments. Their structural protocols
+are exported from `dreamrsi.protocols`. Async implementations are recommended;
+synchronous implementations are also supported through the invocation bridge.
+
+- `ReplayEngine.replay(world, policy, policy_id="") -> ReplayTrajectory` replaces
+  offline mechanics. The SDK uses it for direct replay, comparisons and the default
+  improvement loop. A replacement is responsible for documenting any departure
+  from strict recorded-transition semantics and for isolating policy state.
+- `Objective.score(trajectory, context=None) -> ObjectiveResult` replaces the
+  trajectory score consistently in those paths. Larger is better. Non-finite scores
+  are rejected before comparison. The objective receives an isolated trajectory,
+  never the hidden world; the engine's cached result is not modified. Context is
+  currently omitted. Provider dollar costs are not available in this trajectory.
+- `Method.improve(runtime, task, rounds=5) -> RunResult` replaces the whole outer
+  sequence. `improve_sync` and `run_campaign` also delegate to this method. Use the
+  public `run`, `replay`, `compare_policies` and `promote` operations to compose your
+  method; calling `runtime.improve` inside it would recurse. Custom methods own
+  their recording, budget, selection and validation semantics.
+
+```python
+from dreamrsi import Budget, DreamRSI
+from dreamrsi.models.objectives import ObjectiveResult
+
+class ProbePenalty:
+    def score(self, trajectory, context=None):
+        # Explicit convention for an empty trajectory; choose for your task.
+        quality = trajectory.best_score if trajectory.best_score is not None else -1000
+        return ObjectiveResult(score=quality - 0.02 * trajectory.total_probes)
+
+class OnlineOnly:
+    async def improve(self, runtime, task, rounds=5):
+        return await runtime.run(task)
+
+rsi = DreamRSI(
+    agent=lambda task: task.upper(), evaluator=lambda output: len(output),
+    budget=Budget(model_calls=2), objective=ProbePenalty(), method=OnlineOnly(),
+)
+result = rsi.improve_sync("hello")
+assert result.best == "HELLO"
+```
+
+`DefaultMethod` remains available from `dreamrsi`. It preserves online exploration,
+world construction, replay, candidate generation, comparison and promotion.
+Its internal integration with runtime state is not yet a public campaign context API.

@@ -49,7 +49,7 @@ iteratively revises policy code is still on the roadmap.
 | :--- | :--- |
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
-| Validation | 33 regression tests · Ruff · Pyright · wheel build and installation |
+| Validation | 42 regression tests · Ruff · Pyright · wheel build and installation |
 | Version | `0.1.0a1` · APIs may change |
 | Distribution | Source or GitHub installation; not yet published to PyPI |
 
@@ -352,3 +352,14 @@ non-affiliation. The personal nature of this initiative does not change the lice
 ---
 
 <p align="center"><img src="assets/logo.svg" width="48" alt="Independent Dream-RSI SDK logo"><br><sub>Built independently. Grounded in recorded experience. Still evolving.</sub></p>
+
+## Replace the orchestration pieces
+
+`DreamRSI(..., replay=my_engine, objective=my_objective, method=my_method)`
+accepts independent components. Defaults retain strict recorded-tree replay and the
+paper-inspired phase order. A custom objective changes policy ranking everywhere,
+including promotion; it does not replace the fixed task evaluator.
+
+See [extension contracts](docs/integration.md#replaceable-replay-objective-and-method)
+and the [architecture hardening tracker](docs/hardening.md). Generated policy code,
+secure execution and durable campaigns remain open work.

@@ -96,3 +96,11 @@ The numerical example completed five cycles with 135 agent and 135 evaluator cal
 one observed run reached approximately -0.002940 without policy promotion. A separate
 regression test exercises actual promotion. The replay lab reports measured call deltas;
 its toy scores must not be presented as evidence of LLM cost or quality improvements.
+
+## First hardening increment
+
+Replay, objective scoring and the entire outer method can now be injected separately.
+The default loop lives in `src/dreamrsi/methods.py`; runtime retains online execution
+and shared operations. See [contracts](docs/integration.md#replaceable-replay-objective-and-method)
+and [remaining gaps with acceptance criteria](docs/hardening.md). The regression suite
+now contains 42 passing cases. LLM source development and secure execution remain open.
