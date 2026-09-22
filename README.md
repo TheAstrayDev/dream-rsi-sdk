@@ -52,7 +52,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
 | Version | `0.1.0a2` · APIs may change |
-| Distribution | Source or GitHub installation; not yet published to PyPI |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a2/) · source · GitHub installation |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
@@ -86,7 +86,13 @@ success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) rema
 <a id="quickstart"></a>
 ## Install and try
 
-You need **Python 3.11+** and Git. Use a virtual environment:
+You need **Python 3.11+**. Install the published alpha in your virtual environment:
+
+```bash
+python -m pip install dreamrsi==0.1.0a2
+```
+
+To run the repository examples or contribute, install from source with Git:
 
 ```bash
 git clone https://github.com/TheAstrayDev/dream-rsi-sdk.git

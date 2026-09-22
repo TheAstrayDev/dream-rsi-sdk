@@ -17,3 +17,14 @@ Package author: **TheAstrayDev**. Package name: `dreamrsi`.
 The workflow does not publish on ordinary pushes. PyPI versions cannot be overwritten;
 fixes after publication require a new version. Test results describe SDK reliability,
 while model experiment reports describe effectiveness on their documented tasks.
+
+## Published 0.1.0a2
+
+- Source commit: [aa337c2](https://github.com/TheAstrayDev/dream-rsi-sdk/commit/aa337c20923554e751a7db5cff0e3ad5d00a6346).
+- [CI passed](https://github.com/TheAstrayDev/dream-rsi-sdk/actions/runs/35711547369):
+  Python 3.11–3.14 on Linux, Python 3.14 on Windows, quality and optional integration.
+- [Publication succeeded](https://github.com/TheAstrayDev/dream-rsi-sdk/actions/runs/35711714572)
+  under the TheAstrayDev PyPI account; metadata lists only TheAstrayDev as author.
+- [PyPI release](https://pypi.org/project/dreamrsi/0.1.0a2/).
+- Wheel SHA-256: `fdf55ae579705cc1ac7af283916e00298d2d0e64fc8af7d33de1529618cf73de`.
+- Source archive SHA-256: `bf013c7884239ccfdc495d5c9d43a5c6c038aadde0510c341315546e93ab9bdf`.
