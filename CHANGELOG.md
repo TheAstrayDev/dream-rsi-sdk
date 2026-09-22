@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.0a3 — 2026-09-22 (source commit; PyPI pending)
+## 0.1.0a3 — 2026-09-22
+
+Published to PyPI as `dreamrsi==0.1.0a3` under the sole author `TheAstrayDev`.
 
 - Complete local Appendix verification: 150 tests and a three-revision Bonsai run.
   All revisions scored; none beat the incumbent. Archive both model reports and retain

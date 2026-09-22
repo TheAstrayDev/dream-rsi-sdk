@@ -28,3 +28,10 @@ while model experiment reports describe effectiveness on their documented tasks.
 - [PyPI release](https://pypi.org/project/dreamrsi/0.1.0a2/).
 - Wheel SHA-256: `fdf55ae579705cc1ac7af283916e00298d2d0e64fc8af7d33de1529618cf73de`.
 - Source archive SHA-256: `bf013c7884239ccfdc495d5c9d43a5c6c038aadde0510c341315546e93ab9bdf`.
+
+## Published 0.1.0a3
+
+- Source commit: [71be153](https://github.com/TheAstrayDev/dream-rsi-sdk/commit/71be153).
+- Publication workflow: [run 35748923102](https://github.com/TheAstrayDev/dream-rsi-sdk/actions/runs/35748923102).
+- [PyPI release](https://pypi.org/project/dreamrsi/0.1.0a3/).
+- Package metadata lists only `TheAstrayDev` as author; wheel and source archive were published.
