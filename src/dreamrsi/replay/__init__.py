@@ -26,6 +26,7 @@ from dreamrsi._invoke import invoke
 from dreamrsi._policy import fresh_policy, validate_batch
 from dreamrsi.discovery import DiscoveryNode, DiscoveryTree
 from dreamrsi.errors import ReplayError
+from dreamrsi.models.budget import Budget
 from dreamrsi.models.policy import NodeSummary, PolicyDecision, PolicyView
 from dreamrsi.models.replay import ReplayStep, ReplayTrajectory
 from dreamrsi.views import revealed_context
@@ -90,6 +91,10 @@ class StrictReplay:
         Maximum decision rounds (K₂ in the paper). Default 1000.
     max_parallelism : int
         Maximum batch size (W workers). Default 32.
+    budget : Budget, optional
+        Logical rollout limits: revealed probes, nodes, depth, workers and rounds.
+        Model/evaluator calls each count one per revealed probe. Provider billing
+        and live wall time cannot be simulated. Empty boundaries cost a round only.
     """
 
     def __init__(
@@ -98,6 +103,7 @@ class StrictReplay:
         max_parallelism: int = 32,
         beta1: float = 0.01,
         beta2: float = 0.005,
+        budget: Budget | None = None,
     ) -> None:
         if not isinstance(max_rounds, int) or isinstance(max_rounds, bool) or max_rounds < 0:
             raise ValueError("max_rounds must be a nonnegative integer")
@@ -112,6 +118,11 @@ class StrictReplay:
         self.beta1, self.beta2 = beta1, beta2
         self.max_rounds = max_rounds
         self.max_parallelism = max_parallelism
+        self.budget = budget or Budget()
+        # Replay simulates recorded probes, not provider billing or elapsed live time.
+        for name in ("developer_calls", "tokens", "usd", "wall_time_s"):
+            if getattr(self.budget, name) is not None:
+                raise ValueError(f"Replay cannot simulate {name}; use logical probe limits")
 
     def checkpoint_config(self):
         """JSON configuration identifying replay semantics for campaign recovery."""
@@ -120,6 +131,7 @@ class StrictReplay:
             "max_parallelism": self.max_parallelism,
             "beta1": self.beta1,
             "beta2": self.beta2,
+            "budget": self.budget.to_dict(),
         }
 
     async def replay(
@@ -166,7 +178,10 @@ class StrictReplay:
         last_round = None
 
         all_ids = world.all_node_ids()
-        for round_num in range(1, self.max_rounds + 1):
+        round_limit = self.max_rounds
+        if self.budget.max_rounds is not None:
+            round_limit = min(round_limit, self.budget.max_rounds)
+        for round_num in range(1, round_limit + 1):
             if revealed >= all_ids:
                 trajectory.completed = True
                 break
@@ -179,7 +194,26 @@ class StrictReplay:
                 round_num=round_num,
                 world=world,
             )
-            view = replace(view, last_round=copy.deepcopy(last_round))
+            remaining = replace(
+                self.budget,
+                max_rounds=round_limit,
+                max_parallelism=self._workers(),
+            ).remaining(Budget(
+                model_calls=probes,
+                evaluator_calls=probes,
+                max_nodes=len(revealed),
+                max_rounds=round_num - 1,
+            ))
+            slots = self._workers()
+            for cap in (remaining.model_calls, remaining.evaluator_calls, remaining.max_nodes):
+                if cap is not None:
+                    slots = min(slots, cap)
+            if slots <= 0 or not view.frontier:
+                trajectory.completed = True
+                break
+            view = replace(
+                view, last_round=copy.deepcopy(last_round), budget_remaining=remaining,
+            )
 
             # Ask policy for a decision
             decision: PolicyDecision = await invoke(policy.decide, view)
@@ -190,7 +224,7 @@ class StrictReplay:
                 break
 
             # Validate batch
-            batch = validate_batch(decision, view, self.max_parallelism)
+            batch = validate_batch(decision, view, self._workers())[:slots]
             revealed_this_round: list[str] = []
 
             for node_id in batch:
@@ -253,8 +287,10 @@ class StrictReplay:
             "quality": best_score,
             "probe_penalty": self.beta1 * probes,
             "parallelism_bonus": self.beta2 * probes / max(1, len(trajectory.steps)),
-            "max_rounds": self.max_rounds,
-            "max_parallelism": self.max_parallelism,
+            "max_rounds": round_limit,
+            "max_parallelism": self._workers(),
+            "budget": self.budget.to_dict(),
+            "budget_accounting": "one logical model/evaluator call per revealed probe",
         }
 
         return trajectory
@@ -275,7 +311,8 @@ class StrictReplay:
             if node.id not in revealed:
                 continue
             is_leaf = not any(cid in revealed for cid in node.children_ids)
-            if node.is_root or is_leaf:
+            depth_allowed = self.budget.max_depth is None or node.depth < self.budget.max_depth
+            if (node.is_root or is_leaf) and depth_allowed:
                 frontier.append(
                     NodeSummary(
                         id=node.id,
@@ -297,8 +334,13 @@ class StrictReplay:
             rounds_used=round_num - 1,
             tree_id=tree.tree_id,
             round_number=round_num,
-            max_parallelism=self.max_parallelism,
+            max_parallelism=self._workers(),
         )
+
+    def _workers(self) -> int:
+        if self.budget.max_parallelism is None:
+            return self.max_parallelism
+        return min(self.max_parallelism, self.budget.max_parallelism)
 
     @staticmethod
     def _compute_replay_score(

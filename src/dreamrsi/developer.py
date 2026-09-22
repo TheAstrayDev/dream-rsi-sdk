@@ -357,7 +357,12 @@ class LLMPolicyDeveloper:
                     "calls_used": "revealed probes",
                     "rounds_used": "completed rounds",
                     "max_parallelism": "maximum number of simultaneous expansions",
-                    "budget_remaining": "remaining online limits; may be null in replay",
+                    "budget_remaining": (
+                        "remaining limits; null fields mean unlimited/unavailable. Default replay "
+                        "counts one logical model/evaluator call per revealed probe, not provider "
+                        "billing; an empty boundary consumes a round only. Replay has its own "
+                        "round limit. Custom replay engines may omit this object."
+                    ),
                     "last_round": "null initially; otherwise previous executed batch, "
                     "revealed_nodes, best_score_before and best_score_after. "
                     "Contains past outcomes only; an empty revealed_nodes means no new evidence.",

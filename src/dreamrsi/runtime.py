@@ -53,7 +53,7 @@ class DreamRSIConfig:
     """Optional configuration for DreamRSI."""
 
     replay_max_rounds: int = 1000
-    replay_max_parallelism: int = 32
+    replay_max_parallelism: int | None = None
     replay_beta1: float = 0.01
     replay_beta2: float = 0.005
     optimizer_variants: int = 5
@@ -64,13 +64,17 @@ class DreamRSIConfig:
     def __post_init__(self):
         for name in (
             "replay_max_rounds",
-            "replay_max_parallelism",
             "optimizer_variants",
             "default_batch_size",
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ConfigurationError(f"{name} must be a positive integer")
+        value = self.replay_max_parallelism
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value < 1
+        ):
+            raise ConfigurationError("replay_max_parallelism must be a positive integer or None")
         for name in ("replay_beta1", "replay_beta2", "promotion_min_improvement"):
             value = getattr(self, name)
             if not math.isfinite(value) or value < 0:
@@ -430,7 +434,10 @@ class DreamRSI:
                     frontier=[n for n in view.frontier if n.depth < max_depth],
                     calls_used=costs.model_calls,
                     last_round=copy.deepcopy(last_round),
-                    budget_remaining=budget.remaining(
+                    budget_remaining=replace(
+                        budget, max_nodes=max_nodes, max_depth=max_depth,
+                        max_parallelism=workers, max_rounds=max_rounds,
+                    ).remaining(
                         Budget(
                             model_calls=costs.model_calls,
                             evaluator_calls=costs.evaluator_calls,
@@ -725,11 +732,22 @@ class DreamRSI:
 
     def _get_replay(self):
         if self._replay_engine is None:
+            budget = self._budget or Budget()
+            workers = budget.max_parallelism
+            if workers is None:
+                workers = self._config.default_batch_size
             self._replay_engine = StrictReplay(
                 max_rounds=self._config.replay_max_rounds,
-                max_parallelism=self._config.replay_max_parallelism,
+                max_parallelism=self._config.replay_max_parallelism or max(1, workers),
                 beta1=self._config.replay_beta1,
                 beta2=self._config.replay_beta2,
+                budget=Budget(
+                    model_calls=budget.model_calls,
+                    evaluator_calls=budget.evaluator_calls,
+                    max_nodes=500 if budget.max_nodes is None else budget.max_nodes,
+                    max_depth=20 if budget.max_depth is None else budget.max_depth,
+                    max_parallelism=workers,
+                ),
             )
         return self._replay_engine
 

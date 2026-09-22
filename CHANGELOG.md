@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.0a3 — 2026-09-22 (source commit; PyPI pending)
+
+- Complete local Appendix verification: 150 tests and a three-revision Bonsai run.
+  All revisions scored; none beat the incumbent. Archive both model reports and retain
+  the baseline on ties. Make the example fail when mechanics checks do not pass.
+
+- Add the separate Appendix B grid runtime: solve, observation signals, deterministic
+  pre-grid planning, frozen per-cycle history and configurable beta/Pareto evaluation.
+- Add bounded Appendix class-source development, integrity-checked reload, SQLite
+  live manifests and a complete live/sweep/develop/redeploy example. Document numerical
+  conventions and isolation/recovery boundaries rather than claiming unpublished API parity.
+
+- Align default runtime online/replay worker capacity and expose effective policy budgets.
+- Enforce logical replay probe, node, depth, worker and round caps without revealing hidden
+  world size; retain separate online/offline round limits and document billing differences.
+- Include logical replay limits in recovery fingerprints. Existing campaigns need a new
+  experiment after this replay semantic change; archived experiments are unchanged.
+
 ## 0.1.0a2 — 2026-09-22
 
 - Completed a real Bonsai follow-up with all demonstration gates passing: 5/6 scored

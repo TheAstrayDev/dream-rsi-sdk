@@ -58,7 +58,7 @@ from dreamrsi.sandbox import PolicySandbox, SandboxConfig
 from dreamrsi.storage import SQLiteStore
 from dreamrsi.validation import HoldoutPipeline, split_tasks
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0a3"
 
 __all__ = [
     "Usage",

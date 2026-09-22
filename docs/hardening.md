@@ -19,17 +19,23 @@ Read the [complete integration and recovery guide](research-loop.md) before usin
 | No campaign budget | Shared reservation ledger | Across online, validation and developer work; concurrent admissions cannot over-reserve |
 | Missing token/USD accounting | `Usage`, reports and explicit per-stage ceilings | Nested calls need adapter reports; unknown usage stays estimated; overruns block later work |
 | Limited policy view | Prefix-only observations, diagnostics, revealed history and `last_round` outcomes | Past empty continuations are visible; hidden outcomes and mutation leakage covered by tests |
+| Online/replay budget mismatch (F02) | Shared default worker capacity, effective budget views and logical replay caps | Separate K1/K2 preserved; probe accounting does not simulate variable provider billing; see [limits contract](research-loop.md#shared-policy-limits) |
 | Unsafe external state copies | Workspace checkout/snapshot/release/cancel lifecycle | Backend must implement its service-specific isolation; descriptors stay in trees |
 | Incomplete cancellation | Adapter cancellation hook and confirmed/uncertain status | Cannot magically stop an arbitrary thread or remote service; backend confirmation required |
 | No framework adapter | `RunnableAgentAdapter` | Tested with actual LangChain 1.6.3; schema transforms and remote state isolation remain integration-specific |
 
 ## Research differences that remain
 
-The portable policy language intentionally restricts Python for bounded execution without an external sandbox. The replay objective implements section 3; appendix B.2 Pareto-curve sweeps and published scientific benchmarks are not reproduced. Generalization and real-model cost savings require experiments; unit tests do not establish them. Those differences must remain visible in documentation and promotion.
+The portable policy language intentionally restricts Python for bounded execution without an external sandbox.
+The [Appendix B mode](appendix-b.md) now implements grid solve, observation helpers,
+pre-cycle planning, earlier-live history and beta sweeps. Its Pareto AUC conventions
+are explicitly versioned SDK choices where the published prompt leaves details unspecified.
+Published scientific benchmarks are not reproduced. Generalization and real-model cost
+savings require experiments; unit tests do not establish them.
 
 ## Verification
 
-The local suite passed 125 tests and covers recovery boundaries, policy development, interpreter idioms,
+The local suite passed 135 tests and covers shared replay limits, recovery boundaries, policy development, interpreter idioms,
 source-incumbent equivalence, configurable profiles and worker lifecycle. See the
 [latest real-model report](experiments/sandbox-v4-2026-09-22.md) for measured revision
 changes and the [earlier matrix](experiments/bonsai-2026-09-22.md) for full denominators.

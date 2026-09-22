@@ -33,6 +33,7 @@ for row in scored:
     assert row["evaluation"]["all_worlds_scored"]
 
 plt.rcParams.update({
+    "svg.hashsalt": "dreamrsi-bonsai-development-v4",
     "font.family": "DejaVu Sans", "font.size": 11,
     "axes.spines.top": False, "axes.spines.right": False,
     "axes.edgecolor": "#bac4cd", "axes.labelcolor": "#344454",

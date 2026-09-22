@@ -1,5 +1,9 @@
 # Launch copy for owned social channels
 
+> Superseded by the [0.1.0a2 launch kit](marketing/README.md), which includes two
+> pieces per selected channel and the current Bonsai evidence. Text below is the
+> historical initial draft, not a complete description of the published SDK.
+
 Drafts for the maintainer to review and publish. Do not reuse these on platforms that prohibit AI-written posts.
 
 ## Short post

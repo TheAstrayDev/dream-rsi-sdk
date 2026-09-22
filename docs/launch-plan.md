@@ -1,5 +1,9 @@
 # First-user launch plan
 
+> Historical initial outline. For the published 0.1.0a2 release, use the expanded
+> [30-day launch kit](marketing/README.md), including platform-specific articles,
+> submission instructions, verified rules and a manual activation tracker.
+
 Status: prepared, not published. Budget: $0. Owner: project maintainer.
 
 ## Positioning

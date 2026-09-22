@@ -2,6 +2,11 @@
 
 ## September 22 follow-up
 
+The subsequent F02 fix aligns default worker capacity and adds effective budget views,
+logical replay caps and regression tests. See the [shared limits contract](research-loop.md#shared-policy-limits)
+for the remaining distinction between replay probes and live provider usage. Separate K1/K2
+round limits are intentional. Historical entries below describe the original failures.
+
 The audit below is historical. Subsequent implementation added richer source feedback,
 durable revision recovery, policy provenance, per-run usage exports, replay configuration
 fingerprints and ambiguous validation-collection journaling. The user subsequently authorized

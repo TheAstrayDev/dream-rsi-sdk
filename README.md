@@ -51,7 +51,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.1.0a2` · APIs may change |
+| Version | `0.1.0a3` · source commit · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a2/) · source · GitHub installation |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
@@ -82,6 +82,15 @@ rounds**, then reduced probes from 5 to 3. See the
 The earlier three-seed matrix promoted **1/3 seeds**, with **7/12 revisions scored**;
 its stricter diversity gate did not pass. These are separate configurations, not pooled
 success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) remains available.
+
+## What's new in 0.1.0a3
+
+This source commit adds the Appendix B grid workflow, bounded source reloads with
+SQLite manifests, replay-capacity accounting, and the corresponding local evidence.
+The full test suite passes (**150 tests**); the three-revision Bonsai follow-up scored
+every revision and kept the incumbent on ties. The Appendix B implementation is
+source-only for now; the published PyPI install remains `0.1.0a2` until the next
+release is published.
 
 <a id="quickstart"></a>
 ## Install and try
@@ -277,6 +286,13 @@ See [extension contracts](docs/integration.md#replaceable-replay-objective-and-m
 and the [architecture hardening tracker](docs/hardening.md). Source development, a bounded interpreter, validation and durable checkpoints are
 available in the SDK. See the [research-loop guide](docs/research-loop.md).
 
+The unreleased source-only [Appendix B mode](docs/appendix-b.md), not included in
+PyPI 0.1.0a2, adds `OptimalPolicy.solve()`,
+observation helpers, pre-cycle `plan_grid()`, persisted earlier-live history and beta
+sweeps. `AppendixPolicyDeveloper` rewrites complete class source against those sweeps.
+Its AUC normalization is explicitly SDK-versioned; unpublished numerical details are
+not claimed as exact research-code parity.
+
 
 ## Original research vs. this SDK
 
@@ -296,7 +312,8 @@ the [official repository](https://github.com/zhengkid/Dream-RSI) stated that cod
 | Replay of recorded transitions | ✓ | StrictReplay; unrevealed outcomes stay hidden |
 | Growing historical world pool | ✓ | SQLite checkpoints and restart recovery; uncertain external calls require reconciliation |
 | Decisions based on revealed observations | ✓ | Shared prefix-only observations, diagnostics and history |
-| Quality/work/parallelism objective | ✓ | Section 3 formula with configurable β₁/β₂; not all appendix B.2 metrics |
+| Quality/work/parallelism objective | ✓ | Section 3 β₁/β₂; separate Appendix B beta sweep with documented SDK AUC conventions |
+| Appendix B solve, helpers and grid planning | ✓ | Separate grid runtime with bounded class-source execution and prior-live planning snapshots |
 | LLM-driven iterative policy-code revision | ◐ | Executable source revision and error repair verified with local Bonsai; restricted language, toy evidence rather than research benchmarks |
 | Incumbent comparison and online redeployment | ✓ | Improve loop and evidence gate on a shared world pool |
 | Algorithm, math, and GPU experiments | ○ | Toy demos and SDK tests; published results have not been reproduced |

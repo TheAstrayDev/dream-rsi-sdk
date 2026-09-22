@@ -2,6 +2,34 @@
 
 This SDK follows the phase separation in [Dream-RSI section 3 and appendix B.2](https://arxiv.org/html/2609.14858v1): keep the discovery agent and task evaluator fixed, record outcomes, revise executable exploration policies on replay feedback, and deploy a selected policy for further collection. It does not reproduce the published experiment results.
 
+## Shared policy limits
+
+The default runtime replay now uses the online worker capacity (`Budget.max_parallelism`,
+or `DreamRSIConfig.default_batch_size`, normally 4). Previously it silently used 32.
+`replay_max_parallelism=None` inherits that capacity; an explicit value can reduce it,
+but cannot exceed the online capacity. A reduced replay capacity is an experimental
+override, not section 3's shared-W setup. Standalone `StrictReplay` still defaults to 32.
+
+Both default paths provide `view.budget_remaining`, including effective node, depth,
+worker and round limits. `None` fields mean unlimited or unavailable. Runtime replay
+inherits the configured model/evaluator call limits and online node/depth limits
+(defaults: 500 nodes including root, depth 20). Only prefix-visible nodes consume
+the node allowance; the hidden world's size never becomes a policy budget.
+
+Replay charges **one logical model call and evaluator call per revealed probe**.
+An unrecorded continuation consumes a round, without a probe. This is not a simulation
+of provider billing: adapters with multiple model calls per attempt or failed/skipped
+evaluation can have different live counters. Replay cannot predict those costs;
+token, USD, developer-call and wall-time limits are rejected by `StrictReplay(budget=...)`.
+The runtime passes only supported logical limits. An injected engine owns its own
+contract and is not silently reconfigured.
+
+Online K1 and offline K2 remain independent: the default online round limit is 100;
+`DreamRSIConfig.replay_max_rounds` defaults to 1000. Standalone replay can additionally
+cap K2 using `Budget.max_rounds`. All replay limits enter checkpoint fingerprints;
+old campaigns must start a new experiment after this semantic change. Historical
+Bonsai reports retain their original settings and are not results for this new contract.
+
 ## Source development
 
 ```python
