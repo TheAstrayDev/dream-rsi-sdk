@@ -42,20 +42,46 @@ and want to experiment with how their search branches, batches work, and stops.
 The core has no dependency on a model provider or agent framework.
 
 **Alpha means a working foundation, not a complete reproduction of the paper.**
-The current optimizer searches built-in policy parameters. An LLM that writes and
-iteratively revises policy code is still on the roadmap.
+The default optimizer searches built-in parameters. `LLMPolicyDeveloper` can instead
+revise executable policy source through your model client and measured replay feedback.
+Its lightweight interpreter needs no Docker and supports a restricted SDK language.
 
 | At a glance | Current state |
 | :--- | :--- |
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
-| Validation | 42 regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.1.0a1` · APIs may change |
+| Validation | Regression tests · Ruff · Pyright · wheel build and installation |
+| Version | `0.1.0a2` · APIs may change |
 | Distribution | Source or GitHub installation; not yet published to PyPI |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
 or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
+
+## Tested with a real local model
+
+**Bonsai-27B-Q1_0, running through llama.cpp, wrote and repaired executable policy code
+from replay feedback.** One candidate passed held-out replay, was saved and reloaded,
+then improved a fresh toy refinement run with the discovery agent and evaluator unchanged.
+
+![Bonsai-27B-Q1_0: measured source revisions, replay rounds, and fresh online results](assets/bonsai-development-v4.svg)
+
+| Fresh online task · seed 43 | Balanced baseline | Reloaded generated policy |
+| :--- | ---: | ---: |
+| Agent calls | 6 | 6 |
+| Final absolute state (lower is better) | 1.5000 | 0.1875 |
+| Best evaluator score (higher is better) | -1.5000 | -0.1875 |
+
+This is **87.5% less residual error on one synthetic task**, not a speedup or a general
+AI benchmark. The latest follow-up passed every demonstration gate: **5/6 revisions
+scored**, with different executable structures and replay decisions, held-out promotion,
+and reloaded execution. The model repaired a stalled policy from **1,000 to 4 replay
+rounds**, then reduced probes from 5 to 3. See the
+[latest report and raw evidence](docs/experiments/sandbox-v4-2026-09-22.md).
+
+The earlier three-seed matrix promoted **1/3 seeds**, with **7/12 revisions scored**;
+its stricter diversity gate did not pass. These are separate configurations, not pooled
+success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) remains available.
 
 <a id="quickstart"></a>
 ## Install and try
@@ -182,12 +208,12 @@ The agent and evaluator stay fixed while the search strategy changes.
 See the [authors' method overview](https://dream-rsi.com/#method).
 
 <p align="center">
-  <img src="assets/architecture.svg" alt="Online exploration creates discovery trees; committed trees become replay worlds; policies are evaluated and selected for the next run. LLM policy development, validation, durable campaigns and a sandbox are planned." width="100%">
+  <img src="assets/architecture.svg" alt="Online exploration creates discovery trees; committed trees become replay worlds; policies are evaluated and selected for the next run. Source development, validation, checkpoints and a bounded policy interpreter support the loop." width="100%">
 </p>
 
 *An original SDK diagram mapped to Figure 1 and section 3 of the
 [Dream-RSI paper](https://arxiv.org/html/2609.14858v1#S3), not an official Google figure.
-Green denotes implemented components; the dashed row denotes planned work.*
+Green denotes implemented components; the lower row records execution and recovery boundaries.*
 
 1. **Online explore:** select root or leaf nodes, run bounded parallel attempts, evaluate
    their results, and record states and observations in a `DiscoveryTree`.
@@ -229,8 +255,9 @@ copyable snapshots. Your adapter must isolate external files and processes betwe
 | Evaluator | Score results | Callable, Numeric, Composite |
 | ExplorationPolicy | Choose branches | Balanced, Greedy, BreadthFirst, DepthFirst, Random, EpsilonGreedy, FixedParallel |
 | PolicyOptimizer | Propose strategies | DeterministicPolicyOptimizer, ParameterSearchOptimizer |
+| Policy development | Write and revise executable source | LLMPolicyDeveloper, SourcePolicy, PolicySandbox |
 | PromotionGate | Decide whether to adopt | ReplayOnlyGate, HoldoutGate, CompositeGate |
-| Store | Save runs and evidence | InMemoryStore |
+| Store | Save runs and evidence | InMemoryStore, SQLiteStore |
 
 <a id="comparison"></a>
 ## Replace the orchestration pieces
@@ -241,8 +268,8 @@ paper-inspired phase order. A custom objective changes policy ranking everywhere
 including promotion; it does not replace the fixed task evaluator.
 
 See [extension contracts](docs/integration.md#replaceable-replay-objective-and-method)
-and the [architecture hardening tracker](docs/hardening.md). Generated policy code,
-secure execution and durable campaigns remain open work.
+and the [architecture hardening tracker](docs/hardening.md). Source development, a bounded interpreter, validation and durable checkpoints are
+available in the SDK. See the [research-loop guide](docs/research-loop.md).
 
 
 ## Original research vs. this SDK
@@ -261,28 +288,35 @@ the [official repository](https://github.com/zhengkid/Dream-RSI) stated that cod
 | Discovery trees with states and outcomes | ✓ | Python snapshots; external workspace isolation belongs to the adapter |
 | Root/leaf selection and batched work | ✓ | Shared action validation and concurrent online execution |
 | Replay of recorded transitions | ✓ | StrictReplay; unrevealed outcomes stay hidden |
-| Growing historical world pool | ◐ | In memory only; no restart recovery |
-| Decisions based on revealed observations | ◐ | Frontier summaries, not full observations and diagnostics |
+| Growing historical world pool | ✓ | SQLite checkpoints and restart recovery; uncertain external calls require reconciliation |
+| Decisions based on revealed observations | ✓ | Shared prefix-only observations, diagnostics and history |
 | Quality/work/parallelism objective | ✓ | Section 3 formula with configurable β₁/β₂; not all appendix B.2 metrics |
-| LLM-driven iterative policy-code revision | ○ | Parameter search today; code generation is planned |
+| LLM-driven iterative policy-code revision | ◐ | Executable source revision and error repair verified with local Bonsai; restricted language, toy evidence rather than research benchmarks |
 | Incumbent comparison and online redeployment | ✓ | Improve loop and evidence gate on a shared world pool |
 | Algorithm, math, and GPU experiments | ○ | Toy demos and SDK tests; published results have not been reproduced |
 
-`HoldoutGate` and `SandboxExecutor` are SDK extension points. A gate or protocol does not
-constitute an automatic independent validation pipeline or a working code sandbox.
+`HoldoutPipeline` collects separate worlds and consumes each validation batch once.
+`PolicySandbox` interprets a bounded policy language without Docker or host `exec`.
+Its [configuration guide](docs/sandbox.md) covers resource limits, per-function allowlists,
+JSON profiles and an optional interruptible worker process.
+These are SDK implementations, not reproductions of every research execution detail.
 
 ## Alpha limitations
 
 - **No universal speedup claim.** A compatible interface is not evidence of effectiveness
   on every AI architecture. Meaningful evaluation and controlled experiments are essential.
-- **No weight training or LLM policy developer.** Built-in optimization changes parameters.
-- **Per-run budgets.** Counters measure SDK calls, not hidden provider requests. USD budgets
-  are explicitly rejected until provider-level accounting exists.
-- **In-memory storage.** JSON export requires compatible data. Durable campaign recovery is absent.
-- **Integration-dependent cancellation.** Async waits can be cancelled; running threads and
-  external services need their own cancellation mechanisms.
-- **No automatic holdout pipeline.** Training replay scores are not passed off as validation.
-  The caller must supply independent evidence to HoldoutGate.
+- **Restricted generated-policy language.** Helpers, bounded collections and a math proxy
+  are supported; arbitrary Python, host imports and external tools are unavailable.
+- **Reported costs.** USD/token limits require explicit ceilings; nested API usage requires
+  adapter reporting. Unknown usage is conservatively estimated.
+- **Recovery boundaries.** SQLite restores saved phases; uncertain external work must be
+  reconciled before skipping an interrupted round. State must be JSON-compatible.
+- **Service-specific cancellation.** Adapters confirm remote termination; a cancelled wait
+  alone cannot stop a thread or a remote job.
+- **Experimental evidence.** A local model produced a useful policy on a toy task.
+  Robust multi-seed gains, broad generalization and the original benchmarks remain unverified.
+  Earlier candidates reached the replay round cap; the latest model-written policy repaired
+  that behavior on the recorded toy worlds. Robust stopping on other tasks remains unverified.
 
 <a id="roadmap"></a>
 ## Roadmap
@@ -293,11 +327,11 @@ reproducible checks rather than a growing list of framework names.
 | Phase | Deliverable | Completion criterion |
 | :--- | :--- | :--- |
 | **01 · Foundation** ✓ | Adapters, trees, replay, policies, budgets, tests | Executable examples and contract checks |
-| **02 · Observable policies** ○ | Revealed observations, diagnostics, historical context | Tests exclude future-information leakage |
-| **03 · Reliable campaigns** ○ | Persistent storage, resume, campaign-wide limits | Resume after a restart without losing history |
-| **04 · Evidence before promotion** ○ | Independent validation worlds and reports | Separate train/validation evidence and reproducible decisions |
-| **05 · Dreaming with code** ○ | LLM policy developer and isolated execution | Multiple revisions with replay feedback; generated code stays outside the main process |
-| **06 · Real integrations** ○ | Real-agent examples and provider cost accounting | Public comparisons under equal, documented budgets |
+| **02 · Observable policies** ✓ | Revealed observations, diagnostics, historical context | Tests exclude future-information leakage |
+| **03 · Reliable campaigns** ◐ | Persistent storage, resume, campaign-wide limits | Resume after a restart without losing history |
+| **04 · Evidence before promotion** ✓ | Independent validation worlds and reports | Separate train/validation evidence and reproducible decisions |
+| **05 · Dreaming with code** ◐ | LLM policy developer and bounded execution | Behavioral revision, stopping repair, promotion and reload verified on a toy task; broaden evaluation |
+| **06 · Real integrations** ◐ | Real-agent examples and provider cost accounting | Public comparisons under equal, documented budgets |
 | **07 · Stable SDK** ○ | Stable APIs, versioned data, package publication | Compatibility checks and migration guidance |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the technical audit and implementation priorities.
@@ -316,7 +350,7 @@ For fixes and larger changes, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest -q
-python -m ruff check src tests
+python -m ruff check src tests examples
 python -m pyright
 ```
 
@@ -340,7 +374,7 @@ src/dreamrsi/
 ├── optimization/   # candidate policies and version management
 ├── promotion/      # evidence-based adoption decisions
 ├── evaluation/     # scoring and composition
-├── storage/        # in-memory storage
+├── storage/        # in-memory and SQLite storage
 ├── events/         # events and callbacks
 ├── models/         # shared data types
 └── protocols/      # extension contracts

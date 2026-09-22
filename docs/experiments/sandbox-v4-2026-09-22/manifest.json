@@ -1,0 +1,650 @@
+{
+  "date": "2026-09-22",
+  "model": "Bonsai-27B-Q1_0",
+  "runs": [
+    {
+      "file": "bonsai-source-incumbent-seed-19-followup.json.gz",
+      "uncompressed_sha256": "423ef55827b18f27d2577f0f085fa6e86a2de3782053e0a1542e9772e9688f54",
+      "context_tokens": 16384,
+      "reasoning_budget": 1024,
+      "generation": {
+        "max_tokens": 8192,
+        "seed": 19,
+        "reasoning_effort": null,
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 20,
+        "response_format": "python",
+        "source_incumbent": true
+      },
+      "scored_revisions": 5,
+      "total_revisions": 6,
+      "acceptance": {
+        "multiple_scored_revisions": true,
+        "different_executable_structure": true,
+        "different_replay_decisions": true,
+        "promoted": false,
+        "loaded_and_executed": false
+      },
+      "usage_spent": {
+        "model_calls": 24,
+        "evaluator_calls": 24,
+        "developer_calls": 6,
+        "tokens": 55238,
+        "usd": 0.0
+      },
+      "heldout_scores": {
+        "0": -1.3,
+        "1": -1.3
+      },
+      "deployment": null,
+      "revisions": [
+        {
+          "revision": 0,
+          "status": "failed",
+          "evaluation": {},
+          "error": "SandboxError: Line 28: Unsupported expression",
+          "behavior_hash": null
+        },
+        {
+          "revision": 1,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "56bc692293faed8ab17c9f4d18a7b2a4dac0f20f87f8157d82648733827d1fe1"
+        },
+        {
+          "revision": 2,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "af81630c3190759aeb21ee7b33e153acd344103854bb5b6a98a3c7d6d045bafc"
+        },
+        {
+          "revision": 3,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "af81630c3190759aeb21ee7b33e153acd344103854bb5b6a98a3c7d6d045bafc"
+        },
+        {
+          "revision": 4,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "af81630c3190759aeb21ee7b33e153acd344103854bb5b6a98a3c7d6d045bafc"
+        },
+        {
+          "revision": 5,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "56bc692293faed8ab17c9f4d18a7b2a4dac0f20f87f8157d82648733827d1fe1"
+        }
+      ]
+    },
+    {
+      "file": "bonsai-v4-round-feedback-seed-43.json.gz",
+      "uncompressed_sha256": "580ccccf95f70cb7852de8927cdab73e71350fd582774945c2f4695a7fb7d237",
+      "context_tokens": 16384,
+      "reasoning_budget": 1024,
+      "generation": {
+        "max_tokens": 8192,
+        "seed": 43,
+        "reasoning_effort": null,
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 20,
+        "response_format": "python",
+        "source_incumbent": true
+      },
+      "scored_revisions": 5,
+      "total_revisions": 6,
+      "acceptance": {
+        "multiple_scored_revisions": true,
+        "different_executable_structure": true,
+        "different_replay_decisions": false,
+        "promoted": true,
+        "loaded_and_executed": true
+      },
+      "usage_spent": {
+        "model_calls": 24,
+        "evaluator_calls": 24,
+        "developer_calls": 6,
+        "tokens": 58262,
+        "usd": 0.0
+      },
+      "heldout_scores": {
+        "0": -1.3,
+        "1": -1.279985
+      },
+      "deployment": {
+        "artifact": {
+          "kind": "source",
+          "artifact": {
+            "source": "import math\n\ndef decide(view):\n    frontier = view[\"frontier\"]\n    if not frontier:\n        return {\"expand\": [], \"stop\": True}\n    \n    # Calculate total potential visits across the frontier\n    total_visits = sum([node[\"children_count\"] + 1 for node in frontier])\n    if total_visits == 0:\n        total_visits = 1\n    \n    def priority(node):\n        score = node[\"score\"]\n        if score is None:\n            score = view[\"best_score\"] or 0.0\n        visits = node[\"children_count\"] + 1\n        if visits <= 0:\n            visits = 1\n        # Reduce exploration coefficient over time to favor exploitation\n        # Use a smaller coefficient for deeper nodes to prioritize refinement\n        depth_factor = max(0.5, 1.0 - node.get(\"depth\", 0) * 0.1)\n        return score + depth_factor * math.sqrt(math.log(total_visits) / visits)\n    \n    # Filter out the root node after first expansion to avoid redundant probing\n    # Root is identified by parent_id being None\n    non_root_frontier = [node for node in frontier if node.get(\"parent_id\") is not None]\n    \n    if not non_root_frontier:\n        # Only root exists, expand it once to get feedback\n        return {\"expand\": [node[\"id\"] for node in frontier[:1]], \"stop\": False}\n    \n    # Sort and select top nodes based on priority\n    ranked = sorted(non_root_frontier, key=priority, reverse=True)\n    \n    # Limit batch size based on available budget and rounds to optimize mean score\n    # Use a dynamic batch size that decreases as rounds increase\n    rounds_used = view.get(\"rounds_used\", 1)\n    batch_size = max(1, min(4, 8 // rounds_used))\n    \n    return {\"expand\": [node[\"id\"] for node in ranked[:batch_size]], \"stop\": False}",
+            "parent_hash": "662614fd85180896d5d725d147c439d5bd9aa80fa9994e9d9f4cdba5d4cb0c54",
+            "provenance": {
+              "backend": "llama.cpp",
+              "model": "Bonsai-27B-Q1_0"
+            },
+            "schema_version": 1,
+            "source_hash": "f74c638f9cb45fa138e7ce1e141638ad86e2fba0f9c342c312522078c50f8fe6"
+          },
+          "timeout_s": 5,
+          "sandbox": {
+            "language": "dreamrsi-policy-v4",
+            "limits": {
+              "max_steps": 100000,
+              "max_items": 20000,
+              "max_units": 2000000,
+              "max_source_bytes": 131072,
+              "max_ast_nodes": 16000,
+              "max_value_depth": 48,
+              "max_integer_bits": 512,
+              "max_call_depth": 32,
+              "allow_helpers": true,
+              "allow_comprehensions": true,
+              "allow_methods": true,
+              "allow_math": true,
+              "allowed_builtins": null,
+              "allowed_math": null,
+              "allowed_methods": null
+            },
+            "builtins": [
+              "abs",
+              "all",
+              "any",
+              "bool",
+              "dict",
+              "enumerate",
+              "float",
+              "get",
+              "int",
+              "len",
+              "list",
+              "max",
+              "min",
+              "range",
+              "reversed",
+              "round",
+              "sorted",
+              "str",
+              "sum",
+              "zip"
+            ],
+            "syntax": [
+              "functions",
+              "if/else",
+              "for/while",
+              "return",
+              "break/continue",
+              "assignment",
+              "augmented assignment",
+              "list/dict comprehensions and eagerly materialized generator expressions",
+              "JSON values",
+              "tuple unpacking",
+              "indexing/slicing",
+              "arithmetic",
+              "sorting with lambda/helper key",
+              "collection methods",
+              "import math"
+            ],
+            "math": [
+              "ceil",
+              "cos",
+              "e",
+              "exp",
+              "floor",
+              "log",
+              "log10",
+              "log2",
+              "pi",
+              "sin",
+              "sqrt",
+              "tanh",
+              "tau"
+            ],
+            "contract": {
+              "entrypoint": "def decide(view): returns expand, stop, optional parallelism",
+              "helpers": "Module or local named functions, recursion and captured local values",
+              "imports": "Only import math (optionally as alias), module or function scope",
+              "numbers": "Finite numbers only; handle None explicitly, no float('inf')",
+              "lambdas": "Only one-argument sorting/selection keys",
+              "state": "Fresh execution per decision; derive memory from view.history",
+              "methods": {
+                "dict": [
+                  "copy",
+                  "get",
+                  "items",
+                  "keys",
+                  "values"
+                ],
+                "list": [
+                  "append",
+                  "copy",
+                  "count",
+                  "extend",
+                  "index",
+                  "pop",
+                  "sort"
+                ],
+                "str": [
+                  "endswith",
+                  "lower",
+                  "startswith",
+                  "strip",
+                  "upper"
+                ]
+              }
+            },
+            "forbidden": [
+              "host imports except math proxy",
+              "dunder attributes",
+              "files",
+              "network",
+              "processes",
+              "dynamic Python execution"
+            ]
+          }
+        },
+        "task": 12,
+        "online_incumbent_then_loaded_champion": [
+          {
+            "best_score": -1.5,
+            "model_calls": 6
+          },
+          {
+            "best_score": -0.1875,
+            "model_calls": 6
+          }
+        ],
+        "source_hash_preserved": true
+      },
+      "revisions": [
+        {
+          "revision": 0,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.029985,
+            "total_probes": 3,
+            "total_rounds": 1000,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "c0c84ab2c9a2e3984fd97055e687d3b048a5ed22f094f377369939a1e7ad2d26"
+        },
+        {
+          "revision": 1,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.029985,
+            "total_probes": 3,
+            "total_rounds": 1000,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "c0c84ab2c9a2e3984fd97055e687d3b048a5ed22f094f377369939a1e7ad2d26"
+        },
+        {
+          "revision": 2,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.029985,
+            "total_probes": 3,
+            "total_rounds": 1000,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "c0c84ab2c9a2e3984fd97055e687d3b048a5ed22f094f377369939a1e7ad2d26"
+        },
+        {
+          "revision": 3,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.029985,
+            "total_probes": 3,
+            "total_rounds": 1000,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "c0c84ab2c9a2e3984fd97055e687d3b048a5ed22f094f377369939a1e7ad2d26"
+        },
+        {
+          "revision": 4,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.029985,
+            "total_probes": 3,
+            "total_rounds": 1000,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "c0c84ab2c9a2e3984fd97055e687d3b048a5ed22f094f377369939a1e7ad2d26"
+        },
+        {
+          "revision": 5,
+          "status": "unscored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": false,
+            "mean_score": null,
+            "total_probes": 0,
+            "total_rounds": 0,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "631932c003a35e0f6d291b95558294f25537ac54480b0e3e76ea7faf673e3e05"
+        }
+      ]
+    },
+    {
+      "file": "bonsai-v4-boundary-reasoning4096-seed-43.json.gz",
+      "uncompressed_sha256": "98fd64ce3b7f67f94884ea2b4a1c9584ab29b871085efa1308ba875063f27fb6",
+      "context_tokens": 32768,
+      "reasoning_budget": 4096,
+      "generation": {
+        "max_tokens": 8192,
+        "seed": 43,
+        "reasoning_effort": null,
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 20,
+        "response_format": "python",
+        "source_incumbent": true
+      },
+      "scored_revisions": 5,
+      "total_revisions": 6,
+      "acceptance": {
+        "multiple_scored_revisions": true,
+        "different_executable_structure": true,
+        "different_replay_decisions": true,
+        "promoted": true,
+        "loaded_and_executed": true
+      },
+      "usage_spent": {
+        "model_calls": 24,
+        "evaluator_calls": 24,
+        "developer_calls": 6,
+        "tokens": 76796,
+        "usd": 0.0
+      },
+      "heldout_scores": {
+        "0": -1.3,
+        "1": -1.27625
+      },
+      "deployment": {
+        "artifact": {
+          "kind": "source",
+          "artifact": {
+            "source": "import math\n\ndef decide(view):\n    # Diagnosis: Prior policy wasted an empty round by expanding completed leaves and relying on stale frontier state.\n    # Replay reveals no new evidence for expanded leaves, causing redundant probes.\n    # Changes: 1) Filter frontier to unexpanded leaves to prevent expanding already-expanded nodes.\n    # 2) Explicitly stop on empty last_round to cut wasted rounds early.\n    # 3) Use robust UCB with best_score fallback, handling null scores correctly.\n    # 4) Track root expansion via history to avoid redundant re-attempts.\n    \n    frontier = view['frontier']\n    if not frontier:\n        return {'expand': [], 'stop': True}\n        \n    if view.get('last_round') and not view['last_round'].get('revealed_nodes'):\n        return {'expand': [], 'stop': True}\n        \n    # Focus on unexpanded leaves to avoid wasting rounds on completed nodes\n    candidates = [n for n in frontier if n.get('children_count', 0) == 0]\n    if not candidates:\n        return {'expand': [], 'stop': True}\n        \n    history_ids = [h.get('id') for h in view.get('history', [])]\n    root_id = frontier[0]['id']\n    root_expanded = root_id in history_ids\n    \n    total_visits = sum([n.get('children_count', 0) for n in frontier]) + len(frontier)\n    if total_visits <= 1:\n        total_visits = 2\n        \n    def priority(node):\n        if node.get('depth', 0) == 0 and root_expanded:\n            return -200.0\n        score = node.get('score')\n        if score is None:\n            score = view.get('best_score') or 0.0\n        visits = node.get('children_count', 0) + 1\n        if visits <= 0:\n            visits = 1\n        return score + 1.41 * math.sqrt(math.log(total_visits) / visits)\n        \n    ranked = sorted(candidates, key=priority, reverse=True)\n    return {'expand': [n['id'] for n in ranked[:2]], 'stop': False}",
+            "parent_hash": "aead5cf326b0f48c0485f01954508cc14f1d1b401999e7ca12e830df63e515b2",
+            "provenance": {
+              "backend": "llama.cpp",
+              "model": "Bonsai-27B-Q1_0"
+            },
+            "schema_version": 1,
+            "source_hash": "a3dade8895b8ffc206c513f21dbc18f0c6a679c91df202b1da32a883a997f0df"
+          },
+          "timeout_s": 5,
+          "sandbox": {
+            "language": "dreamrsi-policy-v4",
+            "limits": {
+              "max_steps": 100000,
+              "max_items": 20000,
+              "max_units": 2000000,
+              "max_source_bytes": 131072,
+              "max_ast_nodes": 16000,
+              "max_value_depth": 48,
+              "max_integer_bits": 512,
+              "max_call_depth": 32,
+              "allow_helpers": true,
+              "allow_comprehensions": true,
+              "allow_methods": true,
+              "allow_math": true,
+              "allowed_builtins": null,
+              "allowed_math": null,
+              "allowed_methods": null
+            },
+            "builtins": [
+              "abs",
+              "all",
+              "any",
+              "bool",
+              "dict",
+              "enumerate",
+              "float",
+              "get",
+              "int",
+              "len",
+              "list",
+              "max",
+              "min",
+              "range",
+              "reversed",
+              "round",
+              "sorted",
+              "str",
+              "sum",
+              "zip"
+            ],
+            "syntax": [
+              "functions",
+              "if/else",
+              "for/while",
+              "return",
+              "break/continue",
+              "assignment",
+              "augmented assignment",
+              "list/dict comprehensions and eagerly materialized generator expressions",
+              "JSON values",
+              "tuple unpacking",
+              "indexing/slicing",
+              "arithmetic",
+              "sorting with lambda/helper key",
+              "collection methods",
+              "import math"
+            ],
+            "math": [
+              "ceil",
+              "cos",
+              "e",
+              "exp",
+              "floor",
+              "log",
+              "log10",
+              "log2",
+              "pi",
+              "sin",
+              "sqrt",
+              "tanh",
+              "tau"
+            ],
+            "contract": {
+              "entrypoint": "def decide(view): returns expand, stop, optional parallelism",
+              "helpers": "Module or local named functions, recursion and captured local values",
+              "imports": "Only import math (optionally as alias), module or function scope",
+              "numbers": "Finite numbers only; handle None explicitly, no float('inf')",
+              "lambdas": "Only one-argument sorting/selection keys",
+              "state": "Fresh execution per decision; derive memory from view.history",
+              "methods": {
+                "dict": [
+                  "copy",
+                  "get",
+                  "items",
+                  "keys",
+                  "values"
+                ],
+                "list": [
+                  "append",
+                  "copy",
+                  "count",
+                  "extend",
+                  "index",
+                  "pop",
+                  "sort"
+                ],
+                "str": [
+                  "endswith",
+                  "lower",
+                  "startswith",
+                  "strip",
+                  "upper"
+                ]
+              }
+            },
+            "forbidden": [
+              "host imports except math proxy",
+              "dunder attributes",
+              "files",
+              "network",
+              "processes",
+              "dynamic Python execution"
+            ]
+          }
+        },
+        "task": 12,
+        "online_incumbent_then_loaded_champion": [
+          {
+            "best_score": -1.5,
+            "model_calls": 6
+          },
+          {
+            "best_score": -0.1875,
+            "model_calls": 6
+          }
+        ],
+        "source_hash_preserved": true
+      },
+      "revisions": [
+        {
+          "revision": 0,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.05,
+            "total_probes": 6,
+            "total_rounds": 3,
+            "empty_rounds": 0,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "9485518cbfa29a1ec9eac4a94c86c75fe668ba115b50b34ce507220371b44e6f"
+        },
+        {
+          "revision": 1,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.049975,
+            "total_probes": 5,
+            "total_rounds": 1000,
+            "empty_rounds": 997,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "bfbfa329ace2d972628c45b8d7ca373595afdc8778ca21b776a9eae6111a892e"
+        },
+        {
+          "revision": 2,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.04375,
+            "total_probes": 5,
+            "total_rounds": 4,
+            "empty_rounds": 1,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "d24c8ee21d57caa7800cc84e15cc3cd463c85bbd358a45dfe8130e83987a3d83"
+        },
+        {
+          "revision": 3,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.02625,
+            "total_probes": 3,
+            "total_rounds": 4,
+            "empty_rounds": 1,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "dcb377207122c8824e268cf88f3c337541f6229febc03b3d3ea2bc39bc7560fa"
+        },
+        {
+          "revision": 4,
+          "status": "scored",
+          "evaluation": {
+            "world_count": 1,
+            "all_worlds_scored": true,
+            "mean_score": -1.02625,
+            "total_probes": 3,
+            "total_rounds": 4,
+            "empty_rounds": 1,
+            "recorded_cost": 0.0
+          },
+          "error": null,
+          "behavior_hash": "dcb377207122c8824e268cf88f3c337541f6229febc03b3d3ea2bc39bc7560fa"
+        },
+        {
+          "revision": 5,
+          "status": "failed",
+          "evaluation": {},
+          "error": "SandboxError: Line 19: Unsupported collection method NoneType.get; allowed: []; method keyword arguments are unsupported. Node IDs are strings; node summaries are dictionaries.",
+          "behavior_hash": null
+        }
+      ]
+    }
+  ]
+}

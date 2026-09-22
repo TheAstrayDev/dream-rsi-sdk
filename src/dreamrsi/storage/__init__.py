@@ -10,6 +10,8 @@ from dreamrsi.models.base import Run
 from dreamrsi.models.evaluation import Evaluation
 from dreamrsi.models.policy import PolicyDeploymentStatus, PolicyVersion
 
+from .sqlite import SQLiteStore as SQLiteStore
+
 
 class InMemoryStore:
     """Simple in-memory storage backend.
@@ -19,6 +21,7 @@ class InMemoryStore:
     """
 
     def __init__(self) -> None:
+        self._checkpoints: dict[str, dict] = {}
         self._runs: dict[str, Run] = {}
         self._nodes: dict[str, DiscoveryNode] = {}
         self._policies: dict[str, PolicyVersion] = {}
@@ -66,6 +69,12 @@ class InMemoryStore:
 
     async def save_evaluation(self, evaluation: Evaluation) -> None:
         self._evaluations[evaluation.id] = copy.deepcopy(evaluation)
+
+    async def save_checkpoint(self, campaign_id, data):
+        self._checkpoints[campaign_id] = copy.deepcopy(data)
+
+    async def get_checkpoint(self, campaign_id):
+        return copy.deepcopy(self._checkpoints.get(campaign_id))
 
     async def close(self) -> None:
         pass

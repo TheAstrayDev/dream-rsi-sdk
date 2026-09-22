@@ -1,0 +1,129 @@
+{
+  "kind": "source",
+  "artifact": {
+    "source": "import math\n\ndef decide(view):\n    # Diagnosis: Prior policy wasted an empty round by expanding completed leaves and relying on stale frontier state.\n    # Replay reveals no new evidence for expanded leaves, causing redundant probes.\n    # Changes: 1) Filter frontier to unexpanded leaves to prevent expanding already-expanded nodes.\n    # 2) Explicitly stop on empty last_round to cut wasted rounds early.\n    # 3) Use robust UCB with best_score fallback, handling null scores correctly.\n    # 4) Track root expansion via history to avoid redundant re-attempts.\n    \n    frontier = view['frontier']\n    if not frontier:\n        return {'expand': [], 'stop': True}\n        \n    if view.get('last_round') and not view['last_round'].get('revealed_nodes'):\n        return {'expand': [], 'stop': True}\n        \n    # Focus on unexpanded leaves to avoid wasting rounds on completed nodes\n    candidates = [n for n in frontier if n.get('children_count', 0) == 0]\n    if not candidates:\n        return {'expand': [], 'stop': True}\n        \n    history_ids = [h.get('id') for h in view.get('history', [])]\n    root_id = frontier[0]['id']\n    root_expanded = root_id in history_ids\n    \n    total_visits = sum([n.get('children_count', 0) for n in frontier]) + len(frontier)\n    if total_visits <= 1:\n        total_visits = 2\n        \n    def priority(node):\n        if node.get('depth', 0) == 0 and root_expanded:\n            return -200.0\n        score = node.get('score')\n        if score is None:\n            score = view.get('best_score') or 0.0\n        visits = node.get('children_count', 0) + 1\n        if visits <= 0:\n            visits = 1\n        return score + 1.41 * math.sqrt(math.log(total_visits) / visits)\n        \n    ranked = sorted(candidates, key=priority, reverse=True)\n    return {'expand': [n['id'] for n in ranked[:2]], 'stop': False}",
+    "parent_hash": "aead5cf326b0f48c0485f01954508cc14f1d1b401999e7ca12e830df63e515b2",
+    "provenance": {
+      "backend": "llama.cpp",
+      "model": "Bonsai-27B-Q1_0"
+    },
+    "schema_version": 1,
+    "source_hash": "a3dade8895b8ffc206c513f21dbc18f0c6a679c91df202b1da32a883a997f0df"
+  },
+  "timeout_s": 5,
+  "sandbox": {
+    "language": "dreamrsi-policy-v4",
+    "limits": {
+      "max_steps": 100000,
+      "max_items": 20000,
+      "max_units": 2000000,
+      "max_source_bytes": 131072,
+      "max_ast_nodes": 16000,
+      "max_value_depth": 48,
+      "max_integer_bits": 512,
+      "max_call_depth": 32,
+      "allow_helpers": true,
+      "allow_comprehensions": true,
+      "allow_methods": true,
+      "allow_math": true,
+      "allowed_builtins": null,
+      "allowed_math": null,
+      "allowed_methods": null
+    },
+    "builtins": [
+      "abs",
+      "all",
+      "any",
+      "bool",
+      "dict",
+      "enumerate",
+      "float",
+      "get",
+      "int",
+      "len",
+      "list",
+      "max",
+      "min",
+      "range",
+      "reversed",
+      "round",
+      "sorted",
+      "str",
+      "sum",
+      "zip"
+    ],
+    "syntax": [
+      "functions",
+      "if/else",
+      "for/while",
+      "return",
+      "break/continue",
+      "assignment",
+      "augmented assignment",
+      "list/dict comprehensions and eagerly materialized generator expressions",
+      "JSON values",
+      "tuple unpacking",
+      "indexing/slicing",
+      "arithmetic",
+      "sorting with lambda/helper key",
+      "collection methods",
+      "import math"
+    ],
+    "math": [
+      "ceil",
+      "cos",
+      "e",
+      "exp",
+      "floor",
+      "log",
+      "log10",
+      "log2",
+      "pi",
+      "sin",
+      "sqrt",
+      "tanh",
+      "tau"
+    ],
+    "contract": {
+      "entrypoint": "def decide(view): returns expand, stop, optional parallelism",
+      "helpers": "Module or local named functions, recursion and captured local values",
+      "imports": "Only import math (optionally as alias), module or function scope",
+      "numbers": "Finite numbers only; handle None explicitly, no float('inf')",
+      "lambdas": "Only one-argument sorting/selection keys",
+      "state": "Fresh execution per decision; derive memory from view.history",
+      "methods": {
+        "dict": [
+          "copy",
+          "get",
+          "items",
+          "keys",
+          "values"
+        ],
+        "list": [
+          "append",
+          "copy",
+          "count",
+          "extend",
+          "index",
+          "pop",
+          "sort"
+        ],
+        "str": [
+          "endswith",
+          "lower",
+          "startswith",
+          "strip",
+          "upper"
+        ]
+      }
+    },
+    "forbidden": [
+      "host imports except math proxy",
+      "dunder attributes",
+      "files",
+      "network",
+      "processes",
+      "dynamic Python execution"
+    ]
+  }
+}

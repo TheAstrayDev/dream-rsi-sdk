@@ -200,7 +200,14 @@ async def test_improve_really_promotes_and_persists():
     result = await rsi.improve("task", rounds=2)
     assert isinstance(result.champion_policy, StopAfterOne)
     assert result.costs.model_calls == 4
-    assert len(await rsi.list_policies()) == 1
+    versions = await rsi.list_policies()
+    assert len(versions) == 2
+    champion = next(v for v in versions if v.deployment_status.value == "CHAMPION")
+    retired = next(v for v in versions if v.deployment_status.value == "RETIRED")
+    assert champion.parent_id == retired.id
+    assert champion.metadata["promotion"]["challenger_id"] == champion.id
+    assert champion.metadata["promotion"]["incumbent_id"] == retired.id
+    assert champion.replay_scores and retired.replay_scores
     assert len(result.worlds) == 2
 
 

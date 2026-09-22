@@ -1,0 +1,92 @@
+{
+  "report_sha256": "98fd64ce3b7f67f94884ea2b4a1c9584ab29b871085efa1308ba875063f27fb6",
+  "model": "Bonsai-27B-Q1_0",
+  "baseline_replay_score": -1.05,
+  "selected_revision": 4,
+  "revisions": [
+    {
+      "revision": 1,
+      "status": "scored",
+      "evaluation": {
+        "world_count": 1,
+        "all_worlds_scored": true,
+        "mean_score": -1.05,
+        "total_probes": 6,
+        "total_rounds": 3,
+        "empty_rounds": 0,
+        "recorded_cost": 0.0
+      }
+    },
+    {
+      "revision": 2,
+      "status": "scored",
+      "evaluation": {
+        "world_count": 1,
+        "all_worlds_scored": true,
+        "mean_score": -1.049975,
+        "total_probes": 5,
+        "total_rounds": 1000,
+        "empty_rounds": 997,
+        "recorded_cost": 0.0
+      }
+    },
+    {
+      "revision": 3,
+      "status": "scored",
+      "evaluation": {
+        "world_count": 1,
+        "all_worlds_scored": true,
+        "mean_score": -1.04375,
+        "total_probes": 5,
+        "total_rounds": 4,
+        "empty_rounds": 1,
+        "recorded_cost": 0.0
+      }
+    },
+    {
+      "revision": 4,
+      "status": "scored",
+      "evaluation": {
+        "world_count": 1,
+        "all_worlds_scored": true,
+        "mean_score": -1.02625,
+        "total_probes": 3,
+        "total_rounds": 4,
+        "empty_rounds": 1,
+        "recorded_cost": 0.0
+      }
+    },
+    {
+      "revision": 5,
+      "status": "scored",
+      "evaluation": {
+        "world_count": 1,
+        "all_worlds_scored": true,
+        "mean_score": -1.02625,
+        "total_probes": 3,
+        "total_rounds": 4,
+        "empty_rounds": 1,
+        "recorded_cost": 0.0
+      }
+    },
+    {
+      "revision": 6,
+      "status": "failed",
+      "evaluation": {}
+    }
+  ],
+  "online_incumbent_then_loaded_champion": [
+    {
+      "best_score": -1.5,
+      "model_calls": 6
+    },
+    {
+      "best_score": -0.1875,
+      "model_calls": 6
+    }
+  ],
+  "heldout_scores": {
+    "0": -1.3,
+    "1": -1.27625
+  }
+}

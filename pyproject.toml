@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dreamrsi"
-version = "0.1.0a1"
+version = "0.1.0a2"
 description = "Independent, unofficial Dream-RSI-inspired Python SDK for exploration-policy replay and search (alpha)."
-readme = "README.md"
+readme = "docs/PYPI_README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [
-    { name = "TheAstrayDev and contributors" },
+    { name = "TheAstrayDev" },
 ]
 keywords = ["ai", "agents", "exploration", "recursive-self-improvement", "dream-rsi"]
 classifiers = [
@@ -28,6 +28,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+langchain = ["langchain-core>=1.6.3,<2"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

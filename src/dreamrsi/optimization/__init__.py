@@ -18,6 +18,11 @@ class DeterministicPolicyOptimizer:
     async def generate(
         self, incumbent: Any, evidence: Any, budget: Any | None = None
     ) -> list[Any]:
+        supported = {getattr(policies, name) for name in policies.__all__}
+        if type(incumbent) not in supported:
+            from dreamrsi.errors import ConfigurationError
+
+            raise ConfigurationError("Custom policies require an explicit optimizer/developer")
         variants = []
         incumbent_type = type(incumbent).__name__
 
@@ -41,9 +46,18 @@ class DeterministicPolicyOptimizer:
                 variants.append(
                     policies.EpsilonGreedyPolicy(epsilon=(i + 1) * 0.05, seed=self._seed)
                 )
+            elif type(incumbent) in (
+                policies.DepthFirstPolicy,
+                policies.BreadthFirstPolicy,
+                policies.RandomPolicy,
+            ):
+                variants.append(policies.BalancedPolicy(batch_size=i + 1))
             else:
-                # fallback: just return incumbent copies if type unknown
-                pass
+                from dreamrsi.errors import ConfigurationError
+
+                raise ConfigurationError(
+                    "This policy needs LLMPolicyDeveloper or an explicit custom optimizer"
+                )
 
         return variants
 

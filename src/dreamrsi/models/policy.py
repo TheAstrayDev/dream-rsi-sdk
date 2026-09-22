@@ -95,14 +95,19 @@ class PolicyView:
     calls_used: int
     cost_used: float
     rounds_used: int
+    observations: dict[str, Any] = dataclasses.field(default_factory=dict)
+    history: list[NodeSummary] = dataclasses.field(default_factory=list)
     budget_remaining: Budget | None = None
     tree_id: str = ""
     round_number: int = 0
+    max_parallelism: int = 1
+    last_round: dict[str, Any] | None = None
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
         d = dataclasses.asdict(self)
         d["frontier"] = [node.to_dict() for node in self.frontier]
+        d["history"] = [node.to_dict() for node in self.history]
         if self.budget_remaining is not None:
             d["budget_remaining"] = self.budget_remaining.to_dict()
         return d
@@ -112,6 +117,8 @@ class PolicyView:
         from .budget import Budget
 
         d = data.copy()
+        if "history" in d:
+            d["history"] = [NodeSummary.from_dict(n) for n in d["history"]]
         if "frontier" in d:
             d["frontier"] = [NodeSummary.from_dict(n) for n in d["frontier"]]
         if d.get("budget_remaining"):

@@ -47,6 +47,7 @@ class ReplayStep:
     revealed_nodes: list[str]
     best_score_so_far: float | None
     probes_so_far: int
+    frontier: list[dict[str, Any]] = dataclasses.field(default_factory=list)
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
@@ -64,12 +65,15 @@ class ReplayTrajectory:
     steps: list[ReplayStep] = dataclasses.field(default_factory=list)
     revealed_node_ids: list[str] = dataclasses.field(default_factory=list)
     best_score: float | None = None
+    total_cost: float = 0.0
     total_probes: int = 0
     total_rounds: int = 0
     replay_score: float | None = None
     source: ReplayOutcomeSource = ReplayOutcomeSource.RECORDED
     completed: bool = False
     elapsed_ms: float = 0.0
+    observations: dict[str, Any] = dataclasses.field(default_factory=dict)
+    objective: dict[str, Any] = dataclasses.field(default_factory=dict)
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
     def to_dict(self) -> dict[str, Any]:

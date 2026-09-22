@@ -1,0 +1,122 @@
+{
+  "kind": "source",
+  "artifact": {
+    "source": "def decide(view):\n    # Diagnosis: The incumbent policy repeatedly expands the root node despite having discovered high-quality leaves.\n    # This is inefficient because the root score is null and expanding it just starts a new attempt rather than refining\n    # the best-known path. The policy should prioritize expanding the leaf with the best score to find better refinements.\n    # Also, we should avoid expanding nodes with very low scores (e.g., -4.0) if we have better options.\n    # We will sort the frontier by score (descending, handling null scores) and pick the best candidate.\n    # Fixed non-finite number error by replacing float('-inf') with a sufficiently small finite value (-1e9).\n    \n    frontier = view['frontier']\n    \n    if not frontier:\n        return {'expand': [], 'stop': True}\n    \n    # Sort frontier by score descending. Null scores (root) should be treated as very low priority.\n    # We use a helper to handle null scores for sorting.\n    def score_key(node):\n        s = node.get('score')\n        if s is None:\n            return -1e9\n        return s\n    \n    # Sort and get the top candidates. We can pick up to 3 to balance exploration, \n    # but prioritizing the single best leaf minimizes wasted probes per round.\n    sorted_frontier = sorted(frontier, key=score_key, reverse=True)\n    \n    # Select top 1 candidate to minimize probe cost while maximizing score improvement.\n    candidates = sorted_frontier[:1]\n    \n    if not candidates:\n        return {'expand': [], 'stop': True}\n    \n    # Return the expansion of the top candidate.\n    return {'expand': [c['id'] for c in candidates], 'stop': False}",
+    "parent_hash": "03a2edec3ca02d51bc3a2742cd3bbd055f416d178e0e73d3af9572515e6dd13f",
+    "provenance": {
+      "backend": "llama.cpp",
+      "model": "Bonsai-27B-Q1_0"
+    },
+    "schema_version": 1,
+    "source_hash": "593014ddccda568d76b490e4c8257184a5d68580283a60e0be22af57b8b831ba"
+  },
+  "timeout_s": 5,
+  "sandbox": {
+    "language": "dreamrsi-policy-v3",
+    "limits": {
+      "max_steps": 100000,
+      "max_items": 20000,
+      "max_units": 2000000,
+      "max_source_bytes": 131072,
+      "max_ast_nodes": 16000,
+      "max_value_depth": 48,
+      "max_integer_bits": 512,
+      "max_call_depth": 32,
+      "allow_helpers": true,
+      "allow_comprehensions": true,
+      "allow_methods": true,
+      "allow_math": true
+    },
+    "builtins": [
+      "abs",
+      "all",
+      "any",
+      "bool",
+      "dict",
+      "enumerate",
+      "float",
+      "get",
+      "int",
+      "len",
+      "list",
+      "max",
+      "min",
+      "range",
+      "reversed",
+      "round",
+      "sorted",
+      "str",
+      "sum",
+      "zip"
+    ],
+    "syntax": [
+      "functions",
+      "if/else",
+      "for/while",
+      "return",
+      "break/continue",
+      "assignment",
+      "augmented assignment",
+      "list/dict comprehensions",
+      "JSON values",
+      "tuple unpacking",
+      "indexing/slicing",
+      "arithmetic",
+      "sorting with lambda/helper key",
+      "collection methods",
+      "import math"
+    ],
+    "math": [
+      "ceil",
+      "cos",
+      "exp",
+      "floor",
+      "log",
+      "log10",
+      "log2",
+      "sin",
+      "sqrt",
+      "tanh"
+    ],
+    "contract": {
+      "entrypoint": "def decide(view): returns expand, stop, optional parallelism",
+      "helpers": "Module or local named functions, recursion and captured local values",
+      "imports": "Only import math (optionally as alias), module or function scope",
+      "numbers": "Finite numbers only; handle None explicitly, no float('inf')",
+      "lambdas": "Only one-argument sorting/selection keys",
+      "state": "Fresh execution per decision; derive memory from view.history",
+      "methods": {
+        "dict": [
+          "get",
+          "keys",
+          "values",
+          "items",
+          "copy"
+        ],
+        "list": [
+          "append",
+          "extend",
+          "pop",
+          "count",
+          "index",
+          "copy"
+        ],
+        "str": [
+          "lower",
+          "upper",
+          "startswith",
+          "endswith",
+          "strip"
+        ]
+      }
+    },
+    "forbidden": [
+      "host imports except math proxy",
+      "dunder attributes",
+      "files",
+      "network",
+      "processes",
+      "dynamic Python execution"
+    ]
+  }
+}

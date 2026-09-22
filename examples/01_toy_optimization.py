@@ -21,16 +21,14 @@ Reports measured scores. Online improvement is not guaranteed.
 from __future__ import annotations
 
 import asyncio
-import math
+import os
 import random
 import sys
-import os
 
 # Ensure the src directory is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from dreamrsi import DreamRSI, DreamRSIConfig, Budget, FunctionalAgentAdapter
-
+from dreamrsi import Budget, DreamRSI, DreamRSIConfig, FunctionalAgentAdapter
 
 # ── The "agent": proposes candidate x values ──────────────────
 
@@ -45,10 +43,7 @@ class ToyOptimizer:
 
     async def __call__(self, state, context=None):
         """Propose a candidate x value."""
-        if isinstance(state, dict):
-            parent_x = state["x"]
-        else:
-            parent_x = self._rng.uniform(-10, 10)
+        parent_x = state["x"] if isinstance(state, dict) else self._rng.uniform(-10, 10)
 
         # Random perturbation with decreasing step size
         step = self._rng.gauss(0, max(abs(parent_x) * 0.5, 0.1))
@@ -110,7 +105,6 @@ async def main():
     )
 
     # Track progress
-    round_scores: list[float] = []
 
     def on_event(event):
         if event.type.value == "policy_promoted":

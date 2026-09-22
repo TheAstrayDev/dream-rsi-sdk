@@ -19,6 +19,7 @@ from __future__ import annotations
 import copy
 import math
 import time
+from dataclasses import replace
 from typing import Any
 
 from dreamrsi._invoke import invoke
@@ -27,6 +28,7 @@ from dreamrsi.discovery import DiscoveryNode, DiscoveryTree
 from dreamrsi.errors import ReplayError
 from dreamrsi.models.policy import NodeSummary, PolicyDecision, PolicyView
 from dreamrsi.models.replay import ReplayStep, ReplayTrajectory
+from dreamrsi.views import revealed_context
 
 
 class ReplayWorld:
@@ -111,6 +113,15 @@ class StrictReplay:
         self.max_rounds = max_rounds
         self.max_parallelism = max_parallelism
 
+    def checkpoint_config(self):
+        """JSON configuration identifying replay semantics for campaign recovery."""
+        return {
+            "max_rounds": self.max_rounds,
+            "max_parallelism": self.max_parallelism,
+            "beta1": self.beta1,
+            "beta2": self.beta2,
+        }
+
     async def replay(
         self,
         world: ReplayWorld,
@@ -152,6 +163,7 @@ class StrictReplay:
         root = tree.get_node(tree.root_id)
         best_score: float | None = root.score if root else None
         probes = 0
+        last_round = None
 
         all_ids = world.all_node_ids()
         for round_num in range(1, self.max_rounds + 1):
@@ -167,6 +179,7 @@ class StrictReplay:
                 round_num=round_num,
                 world=world,
             )
+            view = replace(view, last_round=copy.deepcopy(last_round))
 
             # Ask policy for a decision
             decision: PolicyDecision = await invoke(policy.decide, view)
@@ -201,8 +214,15 @@ class StrictReplay:
                 revealed_nodes=revealed_this_round,
                 best_score_so_far=best_score,
                 probes_so_far=probes,
+                frontier=[n.to_dict() for n in view.frontier],
             )
             trajectory.steps.append(step)
+            last_round = {
+                "batch": list(batch),
+                "revealed_nodes": list(revealed_this_round),
+                "best_score_before": view.best_score,
+                "best_score_after": best_score,
+            }
             trajectory.revealed_node_ids.extend(revealed_this_round)
 
             # Check if all nodes revealed
@@ -216,6 +236,8 @@ class StrictReplay:
         trajectory.elapsed_ms = (time.monotonic() - t0) * 1000
 
         # Compute replay objective from the paper
+        trajectory.total_cost = sum(n.cost for n in tree.iter_nodes() if n.id in revealed)
+        trajectory.observations = revealed_context(tree, revealed)["observations"]
         trajectory.replay_score = self._compute_replay_score(
             best_score=best_score,
             probes=probes,
@@ -223,6 +245,17 @@ class StrictReplay:
             beta1=self.beta1,
             beta2=self.beta2,
         )
+        trajectory.objective = {
+            "formula": "best_score - beta1 * probes + beta2 * probes / max(1, rounds)",
+            "direction": "maximize",
+            "beta1": self.beta1,
+            "beta2": self.beta2,
+            "quality": best_score,
+            "probe_penalty": self.beta1 * probes,
+            "parallelism_bonus": self.beta2 * probes / max(1, len(trajectory.steps)),
+            "max_rounds": self.max_rounds,
+            "max_parallelism": self.max_parallelism,
+        }
 
         return trajectory
 
@@ -255,14 +288,16 @@ class StrictReplay:
                 )
 
         return PolicyView(
+            **revealed_context(tree, revealed),
             frontier=frontier,
             best_score=best_score,
             total_nodes=len(revealed),
             calls_used=probes,
-            cost_used=0.0,
+            cost_used=sum(n.cost for n in tree.iter_nodes() if n.id in revealed),
             rounds_used=round_num - 1,
             tree_id=tree.tree_id,
             round_number=round_num,
+            max_parallelism=self.max_parallelism,
         )
 
     @staticmethod

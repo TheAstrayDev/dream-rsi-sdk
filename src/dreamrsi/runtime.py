@@ -19,9 +19,11 @@ from typing import Any
 
 from dreamrsi._invoke import invoke
 from dreamrsi._policy import fresh_policy, validate_batch
+from dreamrsi.accounting import Usage, UsageLedger, UsageReporter
 from dreamrsi.adapters import CallableAgentAdapter
 from dreamrsi.discovery import DiscoveryTree, NodeStatus
 from dreamrsi.errors import (
+    BudgetExceeded,
     ConfigurationError,
 )
 from dreamrsi.evaluation import CallableEvaluator
@@ -38,6 +40,7 @@ from dreamrsi.replay import (
     StrictReplay,
 )
 from dreamrsi.storage import InMemoryStore
+from dreamrsi.views import revealed_context
 
 logger = logging.getLogger("dreamrsi")
 
@@ -135,6 +138,11 @@ class DreamRSI:
         replay: Any | None = None,
         objective: Any | None = None,
         method: Any | None = None,
+        experiment_version: str = "1",
+        validation: Any | None = None,
+        policy_codec: Any | None = None,
+        campaign_budget: Budget | None = None,
+        usage_limits: dict[str, Usage] | None = None,
     ) -> None:
         # Resolve adapter
         if adapter is not None:
@@ -158,20 +166,45 @@ class DreamRSI:
 
         self._config = config or DreamRSIConfig()
         self._budget = budget
+        self.usage = UsageLedger(campaign_budget)
+        self._usage_limits = usage_limits or {}
+        if campaign_budget is not None and any(
+            getattr(campaign_budget, field) is not None
+            for field in ("max_nodes", "max_depth", "max_parallelism", "max_rounds")
+        ):
+            raise ConfigurationError(
+                "Campaign limits support calls, tokens, USD and wall time; "
+                "put tree/round/parallelism limits in the per-run budget"
+            )
+        self.experiment_version = experiment_version
+        self._improving = False
+        self._campaign_id = None
+        self.validation = validation
+        from dreamrsi.artifacts import PolicyCodec
+
+        self.policy_codec = policy_codec or PolicyCodec(
+            getattr(policy_optimizer, "sandbox", None) or getattr(policy, "sandbox", None)
+        )
         self._replay_engine = replay
         self._objective = objective
         self._method = method
         for component, operation in (
-            (replay, "replay"), (objective, "score"), (method, "improve"),
+            (replay, "replay"),
+            (objective, "score"),
+            (method, "improve"),
         ):
             if component is not None and not callable(getattr(component, operation, None)):
                 raise ConfigurationError(f"Component must implement {operation}")
         if budget is not None and budget.max_nodes == 0:
             raise ConfigurationError("max_nodes includes the root; use at least 1")
-        if budget is not None and budget.usd is not None:
-            raise ConfigurationError(
-                "USD budgets require provider pricing; use model_calls/evaluator_calls for now"
-            )
+        for limits in (budget, campaign_budget):
+            if limits is not None and (limits.usd is not None or limits.tokens is not None):  # noqa: SIM102
+                if not all(
+                    stage in self._usage_limits for stage in ("agent", "evaluator", "developer")
+                ):
+                    raise ConfigurationError(
+                        "USD/token budgets require explicit usage ceilings for all stages"
+                    )
         for name in ("initial_state", "propose", "execute", "observe", "next_state"):
             if not callable(getattr(self._adapter, name, None)):
                 raise ConfigurationError(f"Adapter must implement {name}")
@@ -220,7 +253,11 @@ class DreamRSI:
         """Resolve the default promotion gate lazily."""
         if self._promotion is not None:
             return self._promotion
-        from dreamrsi.promotion import ReplayOnlyGate
+        from dreamrsi.promotion import HoldoutGate, ReplayOnlyGate
+
+        if self.validation is not None:
+            self._promotion = HoldoutGate(self._config.promotion_min_improvement)
+            return self._promotion
 
         self._promotion = ReplayOnlyGate(
             min_improvement=self._config.promotion_min_improvement,
@@ -249,6 +286,7 @@ class DreamRSI:
         run_id = str(uuid.uuid4())
         tree = DiscoveryTree()
         costs = CostRecord()
+        run_usage = UsageLedger(self._budget)
         policy = self._champion_policy or self._get_policy()
         episode_policy = fresh_policy(policy)
         budget = self._budget or Budget()
@@ -275,6 +313,8 @@ class DreamRSI:
         await self._store.save_run(record)
         await self._emit(EventType.RUN_STARTED, run_id=run_id)
 
+        cancellation_status = {}
+
         async def expand(parent, round_num):
             # Each branch owns its state. Adapter may provide custom snapshot logic.
             clone = getattr(self._adapter, "clone_state", copy.deepcopy)
@@ -285,16 +325,38 @@ class DreamRSI:
                 "tree_size": tree.size,
                 "parent_id": parent.id,
                 "parent_score": parent.score,
+                "attempt_id": uuid.uuid4().hex,
             }
             evaluation = None
             try:
                 state = await invoke(clone, parent.state)
-                costs.model_calls += 1
-                proposal = await invoke(self._adapter.propose, state, context)
-                execution = await invoke(self._adapter.execute, proposal, state, context)
-                observation = await invoke(self._adapter.observe, execution, state)
-                costs.evaluator_calls += 1
-                evaluation = await self._evaluator.evaluate(observation, context)
+
+                async def agent_attempt():
+                    await self._emit(
+                        EventType.ATTEMPT_STARTED,
+                        run_id=run_id,
+                        data={
+                            "attempt_id": context["attempt_id"],
+                            "parent_id": parent.id,
+                        },
+                    )
+                    proposal = await invoke(self._adapter.propose, state, context)
+                    execution = await invoke(self._adapter.execute, proposal, state, context)
+                    observation = await invoke(self._adapter.observe, execution, state)
+                    return proposal, execution, observation
+
+                proposal, execution, observation = await self._charge(
+                    "agent", agent_attempt, context=context, local=run_usage, costs=costs
+                )
+                evaluation = await self._charge(
+                    "evaluator",
+                    self._evaluator.evaluate,
+                    observation,
+                    context,
+                    context=context,
+                    local=run_usage,
+                    costs=costs,
+                )
                 next_state = await invoke(self._adapter.next_state, observation, state)
                 return dict(
                     state=next_state,
@@ -302,20 +364,55 @@ class DreamRSI:
                     action=execution,
                     observation=observation,
                     score=evaluation.score,
+                    cost=sum(u["usd"] for u in context.get("usage", {}).values()),
+                    metadata={
+                        "attempt_id": context["attempt_id"],
+                        "usage": context.get("usage", {}),
+                        "evaluation": evaluation.to_dict(),
+                    },
                     status=NodeStatus.COMPLETED,
+                ), evaluation
+            except asyncio.CancelledError:
+                cancel = getattr(self._adapter, "cancel", None)
+                confirmed = False
+                if callable(cancel):
+                    try:
+                        confirmed = bool(
+                            await asyncio.wait_for(
+                                invoke(cancel, context["attempt_id"]), timeout=5
+                            )
+                        )
+                    except Exception:
+                        confirmed = False
+                cancellation_status[parent.id] = confirmed
+                raise
+            except BudgetExceeded:
+                return dict(
+                    state=state,
+                    status=NodeStatus.SKIPPED,
+                    metadata={"error": "Campaign budget exhausted"},
                 ), evaluation
             except Exception as exc:
                 return dict(
                     state=state,
                     status=NodeStatus.FAILED,
-                    metadata={"error": str(exc), "error_type": type(exc).__name__},
+                    cost=sum(u["usd"] for u in context.get("usage", {}).values()),
+                    metadata={
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                        "usage": context.get("usage", {}),
+                    },
                 ), evaluation
 
         async def collect():
             nonlocal rounds_done, stop_reason
             initial = await invoke(self._adapter.initial_state, task)
             tree.create_root(state=initial)
+            last_round = None
             for round_num in range(1, max_rounds + 1):
+                if self.usage.breached or run_usage.breached:
+                    stop_reason = "budget"
+                    break
                 slots = min(workers, max(0, max_nodes - tree.size))
                 for name, used in (
                     ("model_calls", costs.model_calls),
@@ -332,6 +429,7 @@ class DreamRSI:
                     view,
                     frontier=[n for n in view.frontier if n.depth < max_depth],
                     calls_used=costs.model_calls,
+                    last_round=copy.deepcopy(last_round),
                     budget_remaining=budget.remaining(
                         Budget(
                             model_calls=costs.model_calls,
@@ -366,14 +464,21 @@ class DreamRSI:
                         else (
                             dict(
                                 status=NodeStatus.SKIPPED,
-                                metadata={"error": "Attempt cancelled before completion"},
+                                metadata={
+                                    "error": "Attempt cancelled before completion",
+                                    "external_cancellation_confirmed": cancellation_status.get(
+                                        batch[index], False
+                                    ),
+                                },
                             ),
                             None,
                         )
-                        for task in tasks
+                        for index, task in enumerate(tasks)
                     ]
+                revealed_this_round = []
                 for parent_id, (fields, evaluation) in zip(batch, results, strict=True):
                     node = tree.add_node(parent_id=parent_id, **fields)
+                    revealed_this_round.append(node.id)
                     if evaluation is not None:
                         await self._store.save_evaluation(evaluation)
                     await self._emit(
@@ -386,7 +491,18 @@ class DreamRSI:
                         run_id=run_id,
                         data={"node_id": node.id, "score": node.score, **node.metadata},
                     )
+                last_round = {
+                    "batch": list(batch),
+                    "revealed_nodes": revealed_this_round,
+                    "best_score_before": view.best_score,
+                    "best_score_after": tree.get_best_score(),
+                }
                 rounds_done += 1
+                if not cancelled and all(
+                    fields.get("status") == NodeStatus.SKIPPED for fields, _ in results
+                ):
+                    stop_reason = "budget"
+                    break
                 if cancelled:
                     raise asyncio.CancelledError
                 await self._emit(
@@ -396,7 +512,8 @@ class DreamRSI:
                     data={"tree_size": tree.size, "best_score": tree.get_best_score()},
                 )
 
-        timeout = asyncio.timeout(budget.wall_time_s)
+        time_limits = [v for v in (budget.wall_time_s, self.usage.remaining_time) if v is not None]
+        timeout = asyncio.timeout(min(time_limits) if time_limits else None)
         try:
             async with timeout:
                 await collect()
@@ -445,6 +562,76 @@ class DreamRSI:
         await self._emit(EventType.RUN_COMPLETED, run_id=run_id)
         return result
 
+    async def _charge(self, stage, fn, *args, context=None, local=None, costs=None):
+        ceiling = self._usage_limits.get(stage, Usage())
+        reservation = self.usage.reserve(stage, ceiling)
+        local_reservation = None
+        reporter = UsageReporter()
+        if context is not None:
+            context["report_usage"] = reporter
+        try:
+            if local is not None:
+                local_reservation = local.reserve(stage, ceiling)
+        except BaseException:
+            # Local admission failed before dispatch: release the global reservation.
+            self.usage.release(reservation)
+            raise
+        try:
+            if self._campaign_id:
+                await self._store.save_checkpoint(
+                    self._campaign_id + ":usage", self.usage.to_dict()
+                )
+        except BaseException:
+            self.usage.release(reservation)
+            if local_reservation is not None and local is not None:
+                local.release(local_reservation)
+            raise
+        completed = False
+        if costs is not None:
+            if stage == "agent":
+                costs.model_calls += 1
+            elif stage == "evaluator":
+                costs.evaluator_calls += 1
+        try:
+            async with asyncio.timeout(self.usage.remaining_time):
+                result = await invoke(fn, *args)
+            completed = True
+            return result
+        finally:
+            # Cancelled/failed external work may still incur cost: retain its ceiling.
+            measured = reporter.usage if reporter.reported else None
+            if measured is not None and not completed:
+                from dataclasses import asdict
+
+                measured = Usage(
+                    **{k: max(v, asdict(ceiling)[k]) for k, v in asdict(measured).items()}
+                )
+            self.usage.settle(reservation, measured, estimated=not completed)
+            if local_reservation is not None and local is not None:
+                local.settle(local_reservation, measured, estimated=not completed)
+            if self._campaign_id:
+                await self._store.save_checkpoint(
+                    self._campaign_id + ":usage", self.usage.to_dict()
+                )
+            charged = measured if measured is not None else ceiling
+            if context is not None:
+                from dataclasses import asdict
+
+                context.setdefault("usage", {})[stage] = {
+                    **asdict(charged),
+                    "estimated": measured is None or not completed,
+                }
+            if costs is not None:
+                field = {
+                    "agent": "online_agent_cost",
+                    "evaluator": "online_evaluator_cost",
+                    "developer": "policy_generation_cost",
+                }[stage]
+                setattr(costs, field, getattr(costs, field) + charged.usd)
+                costs.input_tokens += charged.input_tokens
+                costs.output_tokens += charged.output_tokens
+                costs.provider_calls += charged.provider_calls
+
     async def improve(self, task: Any, rounds: int = 5) -> RunResult:
         """Delegate the complete outer loop to the configured Method."""
         if isinstance(rounds, bool) or not isinstance(rounds, int) or rounds < 1:
@@ -453,7 +640,14 @@ class DreamRSI:
             from dreamrsi.methods import DefaultMethod
 
             self._method = DefaultMethod()
-        return await invoke(self._method.improve, self, task, rounds=rounds)
+        if self._improving:
+            raise ConfigurationError("One runtime cannot run concurrent improvement campaigns")
+        self._improving = True
+        try:
+            async with asyncio.timeout(self.usage.remaining_time):
+                return await invoke(self._method.improve, self, task, rounds=rounds)
+        finally:
+            self._improving = False
 
     def run_sync(self, task: Any) -> RunResult:
         """Synchronous wrapper around ``run()``."""
@@ -540,7 +734,10 @@ class DreamRSI:
         return self._replay_engine
 
     async def replay(
-        self, world: ReplayWorld, policy: Any, policy_id: str = "",
+        self,
+        world: ReplayWorld,
+        policy: Any,
+        policy_id: str = "",
     ) -> ReplayTrajectory:
         """Evaluate through the injected engine and optional global objective.
 
@@ -555,6 +752,13 @@ class DreamRSI:
             if not math.isfinite(result.score):
                 raise ConfigurationError("Objective score must be finite")
             trajectory.replay_score = result.score
+            trajectory.objective = {
+                "type": type(self._objective).__name__,
+                "direction": "maximize",
+                "score": result.score,
+                "components": copy.deepcopy(result.components),
+                "metadata": copy.deepcopy(result.metadata),
+            }
         if trajectory.replay_score is not None and not math.isfinite(trajectory.replay_score):
             raise ConfigurationError("Replay score must be finite")
         return trajectory
@@ -590,17 +794,26 @@ class DreamRSI:
         self._policy_history.append(policy)
         await self._emit(EventType.POLICY_PROMOTED, data={"manual": True})
 
-    async def _save_policy(self, policy):
+    def _policy_version(self, policy):
+        artifact = getattr(policy, "artifact", None)
+        return PolicyVersion(
+            source=artifact.source if artifact else "builtin",
+            source_hash=artifact.source_hash if artifact else "",
+            metadata={"artifact": artifact.to_dict()} if artifact else {},
+            name=type(policy).__name__,
+            creation_method="source_code" if artifact else "manual",
+        )
+
+    async def _save_policy(self, policy, version=None):
         previous = await self._store.get_champion()
-        if previous is not None:
+        version = version or self._policy_version(policy)
+        if previous is not None and previous.id != version.id:
             previous.deployment_status = PolicyDeploymentStatus.RETIRED
             await self._store.save_policy(previous)
-        version = PolicyVersion(
-            name=type(policy).__name__,
-            parent_id=previous.id if previous else None,
-            deployment_status=PolicyDeploymentStatus.CHAMPION,
-        )
+        version.parent_id = previous.id if previous else None
+        version.deployment_status = PolicyDeploymentStatus.CHAMPION
         await self._store.save_policy(version)
+        return version
 
     async def freeze_policy(self) -> None:
         """Freeze the current policy — no more improvements."""
@@ -626,11 +839,10 @@ class DreamRSI:
             "best_score": result.best_score,
             "rounds": result.rounds,
             "costs": {
-                "model_calls": result.costs.model_calls,
-                "evaluator_calls": result.costs.evaluator_calls,
+                **result.costs.to_dict(),
+                # Keep the original export aliases for existing consumers.
                 "online_agent": result.costs.online_agent_cost,
                 "online_evaluator": result.costs.online_evaluator_cost,
-                "replay_compute_ms": result.costs.replay_compute_ms,
             },
             "metrics": result.metrics,
             "tree": result.tree.to_dict() if result.tree else None,
@@ -666,6 +878,7 @@ class DreamRSI:
             )
 
         return PolicyView(
+            **revealed_context(tree, {n.id for n in tree.iter_nodes()}),
             frontier=frontier,
             best_score=tree.get_best_score(),
             total_nodes=tree.size,
@@ -674,6 +887,7 @@ class DreamRSI:
             rounds_used=round_num - 1,
             tree_id=tree.tree_id,
             round_number=round_num,
+            max_parallelism=parallelism,
         )
 
 

@@ -26,7 +26,10 @@ Not affiliated with Google or Google DeepMind.
 
 from __future__ import annotations
 
+from dreamrsi.accounting import Usage, UsageLedger
 from dreamrsi.adapters import CallableAgentAdapter, FunctionalAgentAdapter
+from dreamrsi.artifacts import PolicyArtifact, PolicyCodec, SourcePolicy
+from dreamrsi.developer import DeveloperConfig, LLMPolicyDeveloper
 from dreamrsi.errors import (
     BudgetExceeded,
     ConfigurationError,
@@ -39,7 +42,10 @@ from dreamrsi.errors import (
     SandboxError,
     StorageError,
 )
+from dreamrsi.llamacpp import LlamaCppPolicyModel
 from dreamrsi.methods import DefaultMethod
+from dreamrsi.ollama import OllamaPolicyModel
+from dreamrsi.process_sandbox import ProcessPolicySandbox
 from dreamrsi.runtime import (
     Budget,
     CampaignResult,
@@ -48,10 +54,28 @@ from dreamrsi.runtime import (
     DreamRSIConfig,
     RunResult,
 )
+from dreamrsi.sandbox import PolicySandbox, SandboxConfig
+from dreamrsi.storage import SQLiteStore
+from dreamrsi.validation import HoldoutPipeline, split_tasks
 
-__version__ = "0.1.0a1"
+__version__ = "0.1.0a2"
 
 __all__ = [
+    "Usage",
+    "UsageLedger",
+    "PolicyArtifact",
+    "PolicyCodec",
+    "SourcePolicy",
+    "LLMPolicyDeveloper",
+    "DeveloperConfig",
+    "OllamaPolicyModel",
+    "LlamaCppPolicyModel",
+    "PolicySandbox",
+    "SandboxConfig",
+    "ProcessPolicySandbox",
+    "HoldoutPipeline",
+    "split_tasks",
+    "SQLiteStore",
     "CallableAgentAdapter",
     "FunctionalAgentAdapter",
     # Core

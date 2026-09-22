@@ -56,8 +56,9 @@ limits prevent the corresponding work. Slots are reserved before scheduling a ba
 
 `result.costs.model_calls` counts `propose` invocations, including failed calls.
 `evaluator_calls` counts invocations of the SDK evaluator. Nested provider requests are
-not visible to the SDK. Monetary fields are not populated automatically, and `Budget(usd=...)`
-is explicitly rejected. These counters are not token counts or dollar estimates.
+reported separately through `context["report_usage"](Usage(...))`. USD/token limits require
+explicit per-stage upper bounds. `campaign_budget` shares allowances across runs and
+development. See the detailed accounting contract in [research-loop.md](research-loop.md).
 
 Independent attempts run concurrently. Synchronous integrations use worker threads;
 they must support concurrent calls or run with `max_parallelism=1`.
@@ -72,8 +73,8 @@ a branch; selecting a leaf continues one. Duplicate and non-frontier IDs raise `
 Online and replay execution share action validation.
 
 Each episode receives a deep copy of the policy prototype. Use an explicit seed for
-random policies when reproducibility matters. Runtime policy views currently contain
-frontier summaries, not the full observation and diagnostic history.
+random policies when reproducibility matters. Runtime policy views contain frontier summaries and isolated copies of revealed
+observations, diagnostics and history.
 
 Replay reads committed recorded transitions without calling the agent or evaluator.
 A missing continuation reveals nothing but consumes a decision round. Set objective
@@ -81,11 +82,11 @@ coefficients with `DreamRSIConfig.replay_beta1` and `replay_beta2`.
 
 The default optimizer searches parameters of selected built-in policy families.
 Custom policies may use `ParameterSearchOptimizer` or implement `PolicyOptimizer`.
-LLM-based policy-code generation is not included.
+`LLMPolicyDeveloper` supports iterative source revision with a model callback.
 
 `ReplayOnlyGate` uses historical replay evidence. `HoldoutGate` requires independently
 obtained validation scores; `improve()` does not relabel training scores as validation.
-A full automatic holdout workflow remains planned.
+`HoldoutPipeline` automatically collects a separate pool and consumes fresh validation batches.
 
 ## Persistence and export
 
@@ -113,7 +114,7 @@ synchronous implementations are also supported through the invocation bridge.
   trajectory score consistently in those paths. Larger is better. Non-finite scores
   are rejected before comparison. The objective receives an isolated trajectory,
   never the hidden world; the engine's cached result is not modified. Context is
-  currently omitted. Provider dollar costs are not available in this trajectory.
+  currently omitted. `total_cost` contains recorded node costs when integrations report usage.
 - `Method.improve(runtime, task, rounds=5) -> RunResult` replaces the whole outer
   sequence. `improve_sync` and `run_campaign` also delegate to this method. Use the
   public `run`, `replay`, `compare_policies` and `promote` operations to compose your
@@ -145,3 +146,8 @@ assert result.best == "HELLO"
 `DefaultMethod` remains available from `dreamrsi`. It preserves online exploration,
 world construction, replay, candidate generation, comparison and promotion.
 Its internal integration with runtime state is not yet a public campaign context API.
+
+## Complete research-loop integration
+
+See [research-loop.md](research-loop.md) for source development, language limits, holdout,
+SQLite checkpoints, shared budgets, Runnable integration and cancellation semantics.

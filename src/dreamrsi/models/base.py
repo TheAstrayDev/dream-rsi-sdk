@@ -114,6 +114,10 @@ class DreamCycle:
 
 @dataclasses.dataclass
 class CostRecord:
+    developer_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    provider_calls: int = 0
     model_calls: int = 0
     evaluator_calls: int = 0
     online_agent_cost: float = 0.0

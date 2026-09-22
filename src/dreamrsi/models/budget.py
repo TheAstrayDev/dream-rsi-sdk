@@ -9,6 +9,8 @@ from typing import Any, Self
 class Budget:
     model_calls: int | None = None
     evaluator_calls: int | None = None
+    developer_calls: int | None = None
+    tokens: int | None = None
     usd: float | None = None
     wall_time_s: float | None = None
     max_nodes: int | None = None
@@ -50,6 +52,8 @@ class Budget:
         return Budget(
             model_calls=calc_rem(self.model_calls, used.model_calls),
             evaluator_calls=calc_rem(self.evaluator_calls, used.evaluator_calls),
+            developer_calls=calc_rem(self.developer_calls, used.developer_calls),
+            tokens=calc_rem(self.tokens, used.tokens),
             usd=calc_rem(self.usd, used.usd),
             wall_time_s=calc_rem(self.wall_time_s, used.wall_time_s),
             max_nodes=calc_rem(self.max_nodes, used.max_nodes),

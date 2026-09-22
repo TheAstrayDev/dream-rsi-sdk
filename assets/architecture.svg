@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
-  <title id="title">Dream-RSI SDK: implemented loop and planned policy-code developer</title>
-  <desc id="desc">Your agent and evaluator produce a discovery tree. Committed trees become replay worlds. Parameter-search candidates and the incumbent are evaluated on the same worlds. An evidence gate selects a policy for the next online run. LLM policy-code development is planned.</desc>
+  <title id="title">Dream-RSI SDK: implemented loop and policy developer</title>
+  <desc id="desc">Your agent and evaluator produce a discovery tree. Committed trees become replay worlds. Generated source candidates and the incumbent are evaluated on the same worlds. An evidence gate selects a policy for the next online run. A bounded policy interpreter and independent validation support selection.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="m0 0 10 5-10 5z" fill="#75e0be"/></marker></defs>
   <rect width="1200" height="640" rx="20" fill="#111d25"/>
   <g font-family="Arial, Helvetica, sans-serif">
@@ -11,17 +11,17 @@
     <g fill="#f3f0e6" font-size="19" font-weight="700"><text x="66" y="181">Your agent. Your evaluator.</text><text x="458" y="181">Recorded outcomes only.</text><text x="850" y="181">Compare. Select. Repeat.</text></g>
     <g fill="#c3d0d4" font-size="15">
       <text x="66" y="218">Callable or stateful adapter</text><text x="66" y="246">Policy chooses root / leaf nodes</text><text x="66" y="274">Bounded parallel attempts</text><text x="66" y="302">Scores, states &amp; observations</text>
-      <text x="458" y="218">Committed discovery trees</text><text x="458" y="246">Growing in-memory world pool</text><text x="458" y="274">Reveal only selected transitions</text><text x="458" y="302">No agent or evaluator calls</text>
-      <text x="850" y="218">Incumbent + parameter variants</text><text x="850" y="246">Replay on the same world pool</text><text x="850" y="274">Quality / work / batching score</text><text x="850" y="302">Evidence gate → selected policy</text>
+      <text x="458" y="218">Committed discovery trees</text><text x="458" y="246">In-memory or SQLite checkpoints</text><text x="458" y="274">Reveal only selected transitions</text><text x="458" y="302">No agent or evaluator calls</text>
+      <text x="850" y="218">Source → replay → feedback → rewrite</text><text x="850" y="246">Replay on the same world pool</text><text x="850" y="274">Quality / work / batching score</text><text x="850" y="302">Evidence gate → selected policy</text>
     </g>
     <g fill="#113e36" stroke="#327d67"><rect x="66" y="334" width="284" height="54" rx="8"/><rect x="458" y="334" width="284" height="54" rx="8"/><rect x="850" y="334" width="284" height="54" rx="8"/></g>
     <g fill="#a1f1d3" font-size="14" text-anchor="middle"><text x="208" y="367">DiscoveryTree + Budget</text><text x="600" y="367">ReplayWorld + StrictReplay</text><text x="992" y="367">Optimizer + PromotionGate</text></g>
-    <g fill="#9db1ba" font-size="13"><text x="66" y="430">IMPLEMENTED</text><text x="458" y="430">IMPLEMENTED</text><text x="850" y="430">PARAMETER SEARCH IMPLEMENTED</text></g>
+    <g fill="#9db1ba" font-size="13"><text x="66" y="430">IMPLEMENTED</text><text x="458" y="430">IMPLEMENTED</text><text x="850" y="430">BOUNDED SOURCE DEVELOPMENT</text></g>
     <g fill="none" stroke="#75e0be" stroke-width="2.5" marker-end="url(#arrow)"><path d="M378 278h49"/><path d="M770 278h49"/><path d="M992 472v38H208v-38"/></g>
     <rect x="418" y="493" width="364" height="30" rx="15" fill="#111d25"/>
     <text x="600" y="513" text-anchor="middle" fill="#75e0be" font-size="14">Redeploy selected policy → collect another tree</text>
     <rect x="44" y="554" width="1112" height="48" rx="8" fill="#2f2a23" stroke="#ae8854" stroke-dasharray="6 5"/>
-    <text x="66" y="584" fill="#eebc73" font-size="14" font-weight="700">PLANNED</text>
-    <text x="162" y="584" fill="#ead9be" font-size="14">LLM-written policy revisions · independent validation pipeline · durable campaigns · code sandbox</text>
+    <text x="66" y="584" fill="#eebc73" font-size="14" font-weight="700">BOUNDS</text>
+    <text x="162" y="584" fill="#ead9be" font-size="14">Restricted policy language · single-use holdout · JSON snapshots · explicit external recovery</text>
   </g>
 </svg>

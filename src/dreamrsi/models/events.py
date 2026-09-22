@@ -11,6 +11,7 @@ class EventType(Enum):
 
     RUN_STARTED = "run_started"
     RUN_COMPLETED = "run_completed"
+    ATTEMPT_STARTED = "attempt_started"
     NODE_CREATED = "node_created"
     NODE_EVALUATED = "node_evaluated"
     ROUND_COMPLETED = "round_completed"
