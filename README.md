@@ -51,8 +51,8 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.1.0a3` · source commit · APIs may change |
-| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a2/) · source · GitHub installation |
+| Version | `0.1.0a3` · APIs may change |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a3/) · source · GitHub installation |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
@@ -85,12 +85,11 @@ success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) rema
 
 ## What's new in 0.1.0a3
 
-This source commit adds the Appendix B grid workflow, bounded source reloads with
+This release adds the Appendix B grid workflow, bounded source reloads with
 SQLite manifests, replay-capacity accounting, and the corresponding local evidence.
 The full test suite passes (**150 tests**); the three-revision Bonsai follow-up scored
-every revision and kept the incumbent on ties. The Appendix B implementation is
-source-only for now; the published PyPI install remains `0.1.0a2` until the next
-release is published.
+every revision and kept the incumbent on ties. The published PyPI install is now
+`0.1.0a3`.
 
 <a id="quickstart"></a>
 ## Install and try
@@ -98,7 +97,7 @@ release is published.
 You need **Python 3.11+**. Install the published alpha in your virtual environment:
 
 ```bash
-python -m pip install dreamrsi==0.1.0a2
+python -m pip install dreamrsi==0.1.0a3
 ```
 
 To run the repository examples or contribute, install from source with Git:
@@ -286,8 +285,7 @@ See [extension contracts](docs/integration.md#replaceable-replay-objective-and-m
 and the [architecture hardening tracker](docs/hardening.md). Source development, a bounded interpreter, validation and durable checkpoints are
 available in the SDK. See the [research-loop guide](docs/research-loop.md).
 
-The unreleased source-only [Appendix B mode](docs/appendix-b.md), not included in
-PyPI 0.1.0a2, adds `OptimalPolicy.solve()`,
+The [Appendix B mode](docs/appendix-b.md), included in PyPI 0.1.0a3, adds `OptimalPolicy.solve()`,
 observation helpers, pre-cycle `plan_grid()`, persisted earlier-live history and beta
 sweeps. `AppendixPolicyDeveloper` rewrites complete class source against those sweeps.
 Its AUC normalization is explicitly SDK-versioned; unpublished numerical details are

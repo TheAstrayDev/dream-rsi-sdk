@@ -2,7 +2,8 @@
 
 The new grid-policy implementation completed its synthetic live → beta sweep → model
 revision → source reload → second live cycle. This is unreleased source functionality,
-not part of the published 0.1.0a2 package.
+The experiment archive is documentation evidence and is not bundled into the published
+0.1.0a3 package.
 
 Model: Bonsai-27B-Q1_0 through local llama.cpp at port 8087. Recorded generation settings:
 seed 43, temperature 0.7, maximum output 8,192 tokens. The server was started with a

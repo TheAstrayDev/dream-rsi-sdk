@@ -6,12 +6,12 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.1.0a2**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.1.0a3**.
 
 ## Install
 
 ```bash
-python -m pip install dreamrsi==0.1.0a2
+python -m pip install dreamrsi==0.1.0a3
 ```
 
 ```python

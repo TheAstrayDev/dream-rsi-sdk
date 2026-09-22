@@ -1,6 +1,6 @@
 # Appendix B grid-policy mode
 
-Status: unreleased source implementation; not included in PyPI 0.1.0a2.
+Status: included in the PyPI 0.1.0a3 alpha release.
 The [completed local test](experiments/appendix-b-local.md) records three scored Bonsai
 revisions and two live cycles. The incumbent was retained: no model improvement was measured.
 
