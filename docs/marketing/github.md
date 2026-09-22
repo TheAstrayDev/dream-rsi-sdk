@@ -6,13 +6,13 @@ Use B in Discussions only if enabled; otherwise direct users to the existing iss
 
 ---
 
-## A · Dream-RSI SDK 0.1.0a2 — executable policy development
+## A · Dream-RSI SDK 0.1.0a3 — executable policy development
 
 This alpha adds a complete path from LLM-written exploration policy source to replay,
 revision, validation, promotion and execution after reload.
 
 ```bash
-python -m pip install dreamrsi==0.1.0a2
+python -m pip install dreamrsi==0.1.0a3
 ```
 
 The discovery agent and evaluator stay fixed. `LLMPolicyDeveloper` writes and revises policy
@@ -29,7 +29,7 @@ that survived export/reload. On a fresh toy task, residual decreased from 1.5 to
 six discovery-agent calls per policy. This is limited mechanics evidence, not broad
 generalization or a reproduction of the paper's benchmark results. Earlier failures remain public.
 
-125 local tests passed, and release CI covered Python 3.11–3.14 on Linux and 3.14 on Windows.
+150 local tests passed, and release CI covered Python 3.11–3.14 on Linux and 3.14 on Windows.
 The package installation and process worker were also checked after publication to PyPI.
 
 - [Quickstart](https://github.com/TheAstrayDev/dream-rsi-sdk#quickstart)
