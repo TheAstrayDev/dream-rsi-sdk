@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0a4 — 2026-09-23
+
+- Reuse recorded search trees for an offline improvement pass with no new training run.
+- Delay held-out collection until a candidate improves training replay; retain single-use
+  validation and crash recovery.
+- Compare raw quality and probe counts separately, cap combined agent/developer calls,
+  and stop repeated or stalled policy revisions.
+- Update the validation recovery test for lazy collection so the clean CI matrix passes.
+
+**Behavior change:** The default promotion gate requires paired raw-quality and probe
+evidence. Pass `ReplayOnlyGate` explicitly for score-only promotion. Built-in policy
+variants are tried before an LLM developer; set `DefaultMethod(force_developer=True)`
+to also run source development when a cheap candidate already qualifies. These changes
+limit avoidable calls but are not yet evidence of a full-campaign cost win.
+
 ## 0.1.0a3 — 2026-09-22
 
 Published to PyPI as `dreamrsi==0.1.0a3` under the sole author `TheAstrayDev`.

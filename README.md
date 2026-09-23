@@ -51,8 +51,8 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.1.0a3` · APIs may change |
-| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a3/) · source · GitHub installation |
+| Version | `0.1.0a4` · APIs may change |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a4/) · source · GitHub installation |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
@@ -83,6 +83,19 @@ The earlier three-seed matrix promoted **1/3 seeds**, with **7/12 revisions scor
 its stricter diversity gate did not pass. These are separate configurations, not pooled
 success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) remains available.
 
+## What's new in 0.1.0a4
+
+Recorded runs can now feed an offline policy-improvement pass without a new training run.
+Validation worlds are collected only after a candidate improves training replay; the
+default promotion gate compares raw quality and probe count separately. A combined
+agent/developer call cap and early revision stops reduce avoidable work. These changes
+have **not yet proven an end-to-end cost win** on the full benchmark.
+
+The default gate now requires paired quality/probe evidence. If you relied on
+score-only promotion, pass `ReplayOnlyGate` explicitly. Built-in policy variants run
+before the LLM developer; set `DefaultMethod(force_developer=True)` when source
+development must run even after a cheap candidate qualifies.
+
 ## What's new in 0.1.0a3
 
 This release adds the Appendix B grid workflow, bounded source reloads with
@@ -97,7 +110,7 @@ every revision and kept the incumbent on ties. The published PyPI install is now
 You need **Python 3.11+**. Install the published alpha in your virtual environment:
 
 ```bash
-python -m pip install dreamrsi==0.1.0a3
+python -m pip install dreamrsi==0.1.0a4
 ```
 
 To run the repository examples or contribute, install from source with Git:

@@ -110,7 +110,7 @@ class DreamRSI:
     policy_optimizer : PolicyOptimizer, optional
         Generates challenger policies.  Defaults to DeterministicPolicyOptimizer.
     promotion : PromotionGate, optional
-        Decides whether to promote challengers.  Defaults to ReplayOnlyGate.
+        Decides whether to promote challengers. Defaults to CostQualityGate.
     store : Store, optional
         Storage backend.  Defaults to InMemoryStore.
     budget : Budget, optional

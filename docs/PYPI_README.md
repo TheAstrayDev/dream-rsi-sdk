@@ -6,12 +6,12 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.1.0a3**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.1.0a4**.
 
 ## Install
 
 ```bash
-python -m pip install dreamrsi==0.1.0a3
+python -m pip install dreamrsi==0.1.0a4
 ```
 
 ```python
@@ -29,6 +29,11 @@ print(result.best)  # HELLO
 This example demonstrates integration, not quality improvement. Stateful adapters support
 generate/evaluate/refine tasks. Replay uses recorded outcomes without new discovery calls.
 `LLMPolicyDeveloper` writes and iteratively rewrites executable source from measured feedback.
+Version 0.1.0a4 can replay already recorded runs without a new training call, delays
+holdout collection until a replay-improving candidate exists, and stops repeated policy
+revisions. The default promotion gate now requires paired raw-quality and probe evidence;
+applications needing score-only decisions can explicitly use `ReplayOnlyGate`.
+These changes reduce avoidable calls, but an end-to-end cost advantage has not been proven.
 The SDK includes configurable Docker-free policy interpreters, optional process execution,
 held-out validation, SQLite recovery and reported token/USD accounting.
 

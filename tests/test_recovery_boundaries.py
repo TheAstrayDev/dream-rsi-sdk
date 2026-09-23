@@ -79,6 +79,8 @@ async def test_validation_failure_is_evidence_and_consumes_batch():
 
 
 async def test_ambiguous_validation_cannot_repeat_external_work(tmp_path):
+    from dreamrsi.policies import BalancedPolicy
+
     class FailingStore(SQLiteStore):
         async def save_checkpoint(self, key, data):
             if key.endswith(":validation") and data["worlds"]:
@@ -100,12 +102,16 @@ async def test_ambiguous_validation_cannot_repeat_external_work(tmp_path):
         budget=Budget(model_calls=1),
         method=DefaultMethod("validation"),
     )
+    first._campaign_id = "validation"
+    await first.validation.prepare(first, 1)
     with pytest.raises(OSError, match="crash"):
-        await first.improve(1, rounds=1)
+        await first.validation.evaluate(first, BalancedPolicy(), BalancedPolicy())
     assert calls == [9]
     await store.close()
 
     reopened = SQLiteStore(tmp_path / "validation.db")
+    usage = await reopened.get_checkpoint("validation:usage")
+    assert usage["spent"]["model_calls"] == 1
     second = DreamRSI(
         agent=agent,
         evaluator=float,
@@ -114,8 +120,9 @@ async def test_ambiguous_validation_cannot_repeat_external_work(tmp_path):
         budget=Budget(model_calls=1),
         method=DefaultMethod("validation", resume=True),
     )
+    second._campaign_id = "validation"
     with pytest.raises(ConfigurationError, match="validation collection"):
-        await second.improve(1, rounds=1)
+        await second.validation.prepare(second, 1)
     assert calls == [9]
     third = DreamRSI(
         agent=agent,
@@ -125,9 +132,11 @@ async def test_ambiguous_validation_cannot_repeat_external_work(tmp_path):
         budget=Budget(model_calls=1),
         method=DefaultMethod("validation", resume=True),
     )
-    result = await third.improve(1, rounds=1)
-    assert calls == [9, 1]
-    assert result.costs.model_calls == 2
+    third._campaign_id = "validation"
+    await third.validation.prepare(third, 1)
+    evidence = await third.validation.evaluate(third, BalancedPolicy(), BalancedPolicy())
+    assert evidence["validation_status"] == "exhausted"
+    assert calls == [9]
     assert third.validation.prepared
     assert third.validation.worlds == []
     assert third.validation.next_task_index == 1
