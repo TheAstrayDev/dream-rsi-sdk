@@ -26,6 +26,8 @@ async def save(runtime, campaign_id, task, completed_rounds, phase="ready"):
         "schema": 1,
         "configuration": configuration(runtime),
         "phase": phase,
+        "method_online": getattr(runtime._method, "online", True),
+        "method_force_developer": getattr(runtime._method, "force_developer", False),
         "task_key": task_key(task),
         "completed_rounds": completed_rounds,
         "policy": codec.encode(runtime._get_policy()),
@@ -51,6 +53,12 @@ async def restore(runtime, campaign_id, task):
     data = await runtime._store.get_checkpoint(campaign_id)
     if not data or data["schema"] != 1 or data["task_key"] != task_key(task):
         raise ConfigurationError("Missing, incompatible or wrong-task campaign checkpoint")
+    if data.get("method_online", True) != getattr(runtime._method, "online", True):
+        raise ConfigurationError("Campaign online/offline method changed on resume")
+    if data.get("method_force_developer", False) != getattr(
+        runtime._method, "force_developer", False
+    ):
+        raise ConfigurationError("Campaign developer mode changed on resume")
     if data.get("configuration") != configuration(runtime):
         raise ConfigurationError("Campaign configuration changed on resume")
     codec = runtime.policy_codec

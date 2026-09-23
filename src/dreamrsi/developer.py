@@ -21,12 +21,14 @@ from dreamrsi.errors import BudgetExceeded, ConfigurationError
 @dataclass(frozen=True)
 class DeveloperConfig:
     revisions: int = 5
-    model_timeout_s: float = 120.0
+    model_timeout_s: float | None = 120.0
     max_feedback_chars: int = 200000
     max_steps_per_world: int = 100
     recover_best: bool = True
     response_format: str = "json"
     policy_timeout_s: float = 5.0
+    max_stalled_revisions: int | None = 2
+    stop_on_duplicate_outcome: bool = True
 
     def __post_init__(self):
         for name in ("revisions", "max_feedback_chars", "max_steps_per_world"):
@@ -37,6 +39,8 @@ class DeveloperConfig:
             raise ValueError("Feedback budget must be at least 1024 characters")
         for name in ("model_timeout_s", "policy_timeout_s"):
             value = getattr(self, name)
+            if name == "model_timeout_s" and value is None:
+                continue
             if (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
@@ -46,6 +50,12 @@ class DeveloperConfig:
                 raise ValueError(f"{name} must be finite and positive")
         if type(self.recover_best) is not bool:
             raise ValueError("recover_best must be a boolean")
+        if self.max_stalled_revisions is not None and (
+            type(self.max_stalled_revisions) is not int or self.max_stalled_revisions < 1
+        ):
+            raise ValueError("max_stalled_revisions must be a positive integer or None")
+        if type(self.stop_on_duplicate_outcome) is not bool:
+            raise ValueError("stop_on_duplicate_outcome must be a boolean")
         if self.response_format not in ("json", "python"):
             raise ValueError("response_format must be json or python")
 
@@ -200,6 +210,7 @@ class LLMPolicyDeveloper:
         baseline = feedback["summary"]["mean_score"]
         best_score, best_source, best_hash = baseline, source, parent
         evaluated_source = source
+        stalled_revisions = 0
         candidates = []
         session_id = session_id or uuid.uuid4().hex
         fingerprint = hashlib.sha256(
@@ -244,13 +255,28 @@ class LLMPolicyDeveloper:
                     score = item["evaluation"]["mean_score"]
                     if best_score is None or score > best_score:
                         best_score, best_source, best_hash = score, source, parent
+                        stalled_revisions = 0
+                    else:
+                        stalled_revisions += 1
                     if (
                         self.config.recover_best
                         and best_source is not None
                         and score != best_score
                     ):
                         source, parent = best_source, best_hash
+            if item["status"] in ("failed", "unscored"):
+                stalled_revisions += 1
             feedback = copy.deepcopy(item.get("feedback", feedback))
+        if (
+            pending is None
+            and prior
+            and (
+                prior[-1][1].get("early_stop_reason")
+                or self.config.max_stalled_revisions is not None
+                and stalled_revisions >= self.config.max_stalled_revisions
+            )
+        ):
+            return candidates
         next_revision = pending[1]["revision"] if pending else len(prior)
         for revision in range(next_revision, self.revisions):
             if feedback.get("error"):
@@ -287,6 +313,9 @@ class LLMPolicyDeveloper:
                 "Put a short diagnosis and explanation of changes in Python comments. "
                 "Do not return JSON, a tuple, or prose outside the code. "
             )
+            recent_session = [
+                item for item in self.history if item.get("session_id") == session_id
+            ]
             request = {
                 "revision_goal": revision_goal,
                 "instruction": (
@@ -321,8 +350,12 @@ class LLMPolicyDeveloper:
                 ),
                 "response_format": self.config.response_format,
                 "source": source,
-                "best_source": best_source,
-                "evaluated_source": evaluated_source,
+                # Null aliases avoid repeating complete programs in routine revisions.
+                "best_source": best_source
+                if best_source != source or evaluated_source != source
+                else None,
+                "evaluated_source": evaluated_source if evaluated_source != source else None,
+                "source_aliases": "Null best_source/evaluated_source means identical to source.",
                 "baseline_score": baseline,
                 "best_score": best_score,
                 "policy_timeout_s": self.config.policy_timeout_s,
@@ -331,22 +364,26 @@ class LLMPolicyDeveloper:
                 else {"language": "custom"},
                 "incumbent_type": type(incumbent).__name__,
                 "feedback": copy.deepcopy(feedback),
-                "baseline_feedback": copy.deepcopy(baseline_feedback) if revision > 0 else None,
+                # Candidate feedback already includes per-world baseline deltas. The full
+                # baseline trajectories were sent on the first revision.
+                "baseline_feedback": {"summary": baseline_feedback["summary"]}
+                if revision > 0
+                else None,
                 "revision": revision,
-                "last_response": self.history[-1].get("response", "")
-                if self.history and self.history[-1].get("phase") == "parse"
+                "last_response": str(recent_session[-1].get("response", ""))[-2000:]
+                if recent_session and recent_session[-1].get("phase") == "parse"
                 else None,
                 "revision_history": [
                     {
                         "revision": item["revision"],
                         "status": item.get("status", "legacy"),
-                        "diagnosis": item.get("diagnosis", "")[:1000],
-                        "changes": item.get("changes", "")[:1000],
+                        "diagnosis": item.get("diagnosis", "")[:240],
+                        "changes": item.get("changes", "")[:240],
                         "score": item.get("evaluation", {}).get("mean_score"),
-                        "error": item.get("error"),
-                        "behavior_hash": item.get("behavior_hash"),
+                        "error": str(item.get("error", ""))[:500],
+                        "duplicate_outcome": item.get("duplicate_outcome", False),
                     }
-                    for item in self.history[-12:]
+                    for item in recent_session[-3:]
                 ],
                 "view_contract": {
                     "frontier": "legal nodes: id, parent_id, depth, score (number or null), "
@@ -388,6 +425,7 @@ class LLMPolicyDeveloper:
                     await persist(copy.deepcopy(self.history))
             started = time.monotonic()
             phase = "generation"
+            improved = False
             try:
                 async with asyncio.timeout(self.config.model_timeout_s):
                     if pending is not None:
@@ -443,6 +481,28 @@ class LLMPolicyDeveloper:
                     for item in self.history[:record_index]
                     if item.get("session_id") == session_id
                 )
+                record["outcome_hash"] = hashlib.sha256(
+                    json.dumps(
+                        [
+                            {
+                                "world": t.world_id,
+                                "score": t.replay_score,
+                                "quality": t.best_score,
+                                "probes": t.total_probes,
+                                "rounds": t.total_rounds,
+                            }
+                            for t in measured
+                        ],
+                        sort_keys=True,
+                        allow_nan=False,
+                    ).encode()
+                ).hexdigest()
+                record["duplicate_outcome"] = any(
+                    item.get("behavior_hash") == record["behavior_hash"]
+                    and item.get("outcome_hash") == record["outcome_hash"]
+                    for item in self.history[:record_index]
+                    if item.get("session_id") == session_id and item.get("status") == "scored"
+                )
                 feedback["comparison"] = {
                     "baseline": baseline,
                     "best_before": best_score,
@@ -450,6 +510,7 @@ class LLMPolicyDeveloper:
                     if score is not None and best_score is not None
                     else None,
                     "identical_decisions_to_prior_revision": record["duplicate_behavior"],
+                    "identical_outcome_to_prior_revision": record["duplicate_outcome"],
                     "quality_delta_vs_baseline": [
                         {
                             "world": actual.world_id,
@@ -461,7 +522,8 @@ class LLMPolicyDeveloper:
                         for original, actual in zip(trajectories, measured, strict=True)
                     ],
                 }
-                if score is not None and (best_score is None or score > best_score):
+                improved = score is not None and (best_score is None or score > best_score)
+                if improved:
                     best_score, best_source, best_hash = score, source, artifact.source_hash
                 record["feedback"] = feedback
                 if score is not None:
@@ -489,8 +551,19 @@ class LLMPolicyDeveloper:
                     "error_phase": phase,
                 }
                 record["feedback"] = copy.deepcopy(feedback)
+            if record["status"] in ("scored", "unscored", "failed"):
+                stalled_revisions = 0 if improved else stalled_revisions + 1
+                if self.config.stop_on_duplicate_outcome and record.get("duplicate_outcome"):
+                    record["early_stop_reason"] = "duplicate_outcome"
+                elif (
+                    self.config.max_stalled_revisions is not None
+                    and stalled_revisions >= self.config.max_stalled_revisions
+                ):
+                    record["early_stop_reason"] = "stalled_revisions"
             record["elapsed_s"] = time.monotonic() - started
             self.history[record_index] = copy.deepcopy(record)
             if persist is not None:
                 await persist(self.history)
+            if record.get("early_stop_reason"):
+                break
         return candidates

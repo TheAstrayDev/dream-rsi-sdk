@@ -231,6 +231,43 @@ class DreamRSI:
         self._worlds: list[ReplayWorld] = []
         self._frozen = False
 
+    async def record_world(self, task: Any, result: RunResult) -> ReplayWorld:
+        """Add a completed run to training replay without making another agent call.
+
+        The caller remains responsible for accounting for runs acquired outside
+        this runtime. A run made by this runtime is already in ``usage``.
+        """
+        if self._improving:
+            raise ConfigurationError("Cannot add training worlds during improvement")
+        if not isinstance(result, RunResult) or result.tree is None:
+            raise ConfigurationError("record_world requires a completed RunResult with a tree")
+        if not result.tree.is_committed or result.tree.root_id is None:
+            raise ConfigurationError("Only committed discovery trees can become replay worlds")
+        if self.validation is not None:
+            from dreamrsi.validation import task_key
+
+            fingerprint = task_key(task)
+            if fingerprint in {task_key(t) for t in self.validation.tasks}:
+                raise ConfigurationError("Training task overlaps the validation partition")
+            stored_run = await self._store.get_run(result.run_id)
+            if (
+                stored_run is None
+                or stored_run.status != RunStatus.COMPLETED
+                or stored_run.tree_id != result.tree.tree_id
+                or stored_run.metadata.get("task_key") != fingerprint
+            ):
+                raise ConfigurationError("Recorded run does not belong to the supplied task")
+        for world in self._worlds:
+            if world.tree.tree_id == result.tree.tree_id:
+                return world
+        world = ReplayWorld(result.tree)
+        self._worlds.append(world)
+        await self._emit(
+            EventType.WORLD_CREATED,
+            data={"world_id": world.world_id, "tree_size": world.tree.size},
+        )
+        return world
+
     def _get_policy(self) -> Any:
         """Resolve the default policy lazily."""
         if self._policy is not None:
@@ -257,14 +294,10 @@ class DreamRSI:
         """Resolve the default promotion gate lazily."""
         if self._promotion is not None:
             return self._promotion
-        from dreamrsi.promotion import HoldoutGate, ReplayOnlyGate
+        from dreamrsi.promotion import CostQualityGate
 
-        if self.validation is not None:
-            self._promotion = HoldoutGate(self._config.promotion_min_improvement)
-            return self._promotion
-
-        self._promotion = ReplayOnlyGate(
-            min_improvement=self._config.promotion_min_improvement,
+        self._promotion = CostQualityGate(
+            min_quality_improvement=self._config.promotion_min_improvement
         )
         return self._promotion
 
@@ -314,6 +347,10 @@ class DreamRSI:
             status=RunStatus.RUNNING,
             started_at=time.time(),
         )
+        if self.validation is not None:
+            from dreamrsi.validation import task_key
+
+            record.metadata["task_key"] = task_key(task)
         await self._store.save_run(record)
         await self._emit(EventType.RUN_STARTED, run_id=run_id)
 
@@ -425,6 +462,12 @@ class DreamRSI:
                     cap = getattr(budget, name)
                     if cap is not None:
                         slots = min(slots, max(0, cap - used))
+                for ledger in (run_usage, self.usage):
+                    cap = getattr(ledger.budget, "total_llm_calls", None)
+                    if cap is not None:
+                        available = cap - ledger.spent["total_llm_calls"]
+                        available -= ledger.held["total_llm_calls"]
+                        slots = min(slots, max(0, available))
                 if slots <= 0:
                     stop_reason = "budget"
                     break
@@ -441,6 +484,7 @@ class DreamRSI:
                         Budget(
                             model_calls=costs.model_calls,
                             evaluator_calls=costs.evaluator_calls,
+                            total_llm_calls=costs.model_calls,
                             max_nodes=tree.size,
                             max_rounds=rounds_done,
                             wall_time_s=time.monotonic() - started,

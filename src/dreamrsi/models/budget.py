@@ -17,6 +17,9 @@ class Budget:
     max_depth: int | None = None
     max_parallelism: int | None = None
     max_rounds: int | None = None
+    # One logical agent attempt or policy-developer request counts as one.
+    # Provider-reported token/USD usage remains the source for monetary limits.
+    total_llm_calls: int | None = None
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -53,6 +56,7 @@ class Budget:
             model_calls=calc_rem(self.model_calls, used.model_calls),
             evaluator_calls=calc_rem(self.evaluator_calls, used.evaluator_calls),
             developer_calls=calc_rem(self.developer_calls, used.developer_calls),
+            total_llm_calls=calc_rem(self.total_llm_calls, used.total_llm_calls),
             tokens=calc_rem(self.tokens, used.tokens),
             usd=calc_rem(self.usd, used.usd),
             wall_time_s=calc_rem(self.wall_time_s, used.wall_time_s),

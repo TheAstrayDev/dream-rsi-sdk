@@ -120,7 +120,7 @@ class StrictReplay:
         self.max_parallelism = max_parallelism
         self.budget = budget or Budget()
         # Replay simulates recorded probes, not provider billing or elapsed live time.
-        for name in ("developer_calls", "tokens", "usd", "wall_time_s"):
+        for name in ("developer_calls", "total_llm_calls", "tokens", "usd", "wall_time_s"):
             if getattr(self.budget, name) is not None:
                 raise ValueError(f"Replay cannot simulate {name}; use logical probe limits")
 

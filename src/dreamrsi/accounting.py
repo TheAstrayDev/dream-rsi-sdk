@@ -45,7 +45,14 @@ class UsageLedger:
         self.budget = budget
         self.started = time.monotonic()
         self.elapsed_before = 0.0
-        self.spent = dict(model_calls=0, evaluator_calls=0, developer_calls=0, tokens=0, usd=0.0)
+        self.spent = dict(
+            model_calls=0,
+            evaluator_calls=0,
+            developer_calls=0,
+            total_llm_calls=0,
+            tokens=0,
+            usd=0.0,
+        )
         self.held = {key: 0 for key in self.spent}
         self.records = []
         self.active = []
@@ -76,6 +83,8 @@ class UsageLedger:
         }[stage]
         amounts = dict.fromkeys(self.spent, 0)
         amounts.update({count: 1, "tokens": ceiling.tokens, "usd": ceiling.usd})
+        if stage in ("agent", "developer"):
+            amounts["total_llm_calls"] = 1
         with self._lock:
             if self.breached:
                 raise BudgetExceeded("usage_ceiling", 0, 1)
@@ -131,6 +140,11 @@ class UsageLedger:
         self.elapsed_before = data.get("elapsed", 0.0)
         self.started = time.monotonic()
         self.spent = dict(data["spent"])
+        # Checkpoints from before the combined call limit still have an exact
+        # count: each recorded agent/developer dispatch was charged once.
+        self.spent.setdefault(
+            "total_llm_calls", self.spent["model_calls"] + self.spent["developer_calls"]
+        )
         self.records = list(data["records"]) + list(data.get("pending", []))
         self.breached = data["breached"]
 
