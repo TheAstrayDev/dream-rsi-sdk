@@ -1,0 +1,1489 @@
+{
+  "status": "completed",
+  "created_at_utc": "2026-09-24T09:29:11.976847+00:00",
+  "protocol": "paper-style-diverse-signal-branch-fixture-prospective-v1",
+  "model": "Ternary-Bonsai-27B-Q2_g64",
+  "temperature": 0.7,
+  "revision_cap": 8,
+  "feedback_chars": 30000,
+  "accounting": "logical discovery-agent calls plus real local developer requests",
+  "replayed_model_responses_from": null,
+  "new_model_requests": 8,
+  "task_manifest": {
+    "training": [
+      {
+        "seed": 300,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 301,
+        "signal_shift": 0.1
+      }
+    ],
+    "validation": [
+      {
+        "seed": 302,
+        "signal_shift": -0.15
+      },
+      {
+        "seed": 303,
+        "signal_shift": 0.05
+      }
+    ],
+    "fresh": [
+      {
+        "seed": 304,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 305,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 306,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 307,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 308,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 309,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 310,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 311,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 312,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 313,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 314,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 315,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 316,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 317,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 318,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 319,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 320,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 321,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 322,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 323,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 324,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 325,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 326,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 327,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 328,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 329,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 330,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 331,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 332,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 333,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 334,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 335,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 336,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 337,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 338,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 339,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 340,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 341,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 342,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 343,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 344,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 345,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 346,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 347,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 348,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 349,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 350,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 351,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 352,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 353,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 354,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 355,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 356,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 357,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 358,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 359,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 360,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 361,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 362,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 363,
+        "signal_shift": 0.1
+      },
+      {
+        "seed": 364,
+        "signal_shift": -0.2
+      },
+      {
+        "seed": 365,
+        "signal_shift": -0.1
+      },
+      {
+        "seed": 366,
+        "signal_shift": 0.0
+      },
+      {
+        "seed": 367,
+        "signal_shift": 0.1
+      }
+    ]
+  },
+  "manifest_sha256": "a13bf142dc3f11f9d1dd782730b65ef5c846f9c64cf22918096130096eb583b4",
+  "model_requests": [
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 7560,
+      "output_tokens": 3072,
+      "response_sha256": "721964253deb1fac305b97b872bad44531214335e68f53a8200ceb5b25ec7b04"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9911,
+      "output_tokens": 2377,
+      "response_sha256": "13ce50e282105b3939af643114773f076876320003bb975dc3fdbe29676ad8a2"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9159,
+      "output_tokens": 2492,
+      "response_sha256": "3a44c06d533a80bb2c0af6c4fa22c97eb794ab06a10221f8900ea2282d244903"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9769,
+      "output_tokens": 2389,
+      "response_sha256": "567fa2b5d2d301eb3857f0319eb80ebea75861d74006a6487a4d7d24aabd6f16"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9219,
+      "output_tokens": 2256,
+      "response_sha256": "e7cc28b60df3792230477966a727e905c267c0f32d2455f09f3c6c8a29a82c8e"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9264,
+      "output_tokens": 2730,
+      "response_sha256": "2d22b12ed05e6145d5e0a4863828ceded494860ac15453809ba45c20d97f9e21"
+    },
+    {
+      "stage": "developer",
+      "status": "completed",
+      "input_tokens": 9118,
+      "output_tokens": 2717,
+      "response_sha256": "d373af5b390f0f400244a8a07e1a81fcdcc2726d8e8a5fa36cedb0ed32dc9f5e"
+    },
+    {
+      "stage": "developer",
+      "status": "uncertain",
+      "error": "RuntimeError: HTTP 400: {\"error\":{\"code\":400,\"message\":\"request (12501 tokens) exceeds the available context size (12288 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":12501,\"n_ctx\":12288}}"
+    }
+  ],
+  "training": [
+    {
+      "task": {
+        "seed": 300,
+        "signal_shift": -0.2
+      },
+      "quality": 0.9,
+      "calls": 4
+    },
+    {
+      "task": {
+        "seed": 301,
+        "signal_shift": 0.1
+      },
+      "quality": 0.9,
+      "calls": 4
+    }
+  ],
+  "fresh": [
+    {
+      "task": {
+        "seed": 304,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 305,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 306,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 307,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 308,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 309,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 310,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 311,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 312,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 313,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 314,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 315,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 316,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 317,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 318,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 319,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 320,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 321,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 322,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 323,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 324,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 325,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 326,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 327,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 328,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 329,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 330,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 331,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 332,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 333,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 334,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 335,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 336,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 337,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 338,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 339,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 340,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 341,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 342,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 343,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 344,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 345,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 346,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 347,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 348,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 349,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 350,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 351,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 352,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 353,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 354,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 355,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 356,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 357,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 358,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 359,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 360,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 361,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 362,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 363,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 364,
+        "signal_shift": -0.2
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 365,
+        "signal_shift": -0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    },
+    {
+      "task": {
+        "seed": 366,
+        "signal_shift": 0.0
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 3
+      }
+    },
+    {
+      "task": {
+        "seed": 367,
+        "signal_shift": 0.1
+      },
+      "baseline": {
+        "quality": 0.9,
+        "calls": 4
+      },
+      "champion": {
+        "quality": 0.9,
+        "calls": 4
+      }
+    }
+  ],
+  "development": {
+    "revisions": [
+      {
+        "status": "failed",
+        "phase": "validation",
+        "error": "SandboxError: Line 193:26: '(' was never closed",
+        "response": "python\n\"\"\"\nDiagnosis:\n- Incumbent (FixedParallelPolicy) greedily picks highest-scoring frontier node each round.\n- Problem 1: In world2, round 2 expanded depth-1 node (score 0.4) to depth 2 with same score 0.4 \u2014 wasted probe.\n  Refining a leaf with no improvement potential is suboptimal when a fresh branch exists.\n- Problem 2: The policy doesn't distinguish between 'fresh unexplored depth-1 branches' and 'already-explored ones'.\n  World1 had two depth-1 branches (scores 0.40 and 0.10); world2 had two (0.4 and 0.7).\n  Both worlds benefit from exploring the second depth-1 branch before refining depth-2.\n- Problem 3: The root (score None) is never ranked meaningfully. A policy should occasionally\n  re-expand the root to start a NEW attempt when existing branches show no promise.\n\nSolution:\n- Track which depth-1 branches have been 'fully explored' (expanded at least once).\n- Prioritize: (1) unexplored depth-1 branches sorted by score desc, (2) root for fresh attempts,\n  (3) remaining nodes for refinement.\n- Only refine a node if its score >= current best_score (otherwise it's unlikely to yield improvement).\n- Use parallelism when multiple unexplored depth-1 branches are available.\n- Stop when max_rounds reached or no expandable frontier remains.\n\"\"\"\n\nimport math\n\n\ndef _score_sort_key(node):\n    \"\"\"\n    Sort key for ranking frontier nodes.\n    Returns a tuple where lower values = higher priority (for sort ascending).\n    Priority order: unexplored depth-1 > root (when useful) > scored nodes > unscored nodes.\n    \"\"\"\n    is_root = node.get('parent_id') is None\n    depth = node.get('depth', 0)\n    score = node.get('score')\n    explored = node.get('explored', False)\n    \n    # Group 1: unexplored depth-1 (fresh branches) \u2014 highest priority\n    # Group 2: root \u2014 medium priority (for new attempts)\n    # Group 3: scored nodes \u2014 lower priority\n    # Group 4: unscored nodes \u2014 lowest priority\n    \n    if depth == 1 and not explored:\n        group = 0\n        # Within group 0, sort by score descending (so invert score for ascending sort)\n        score_val = -score if score is not None else 0\n    elif is_root:\n        group = 1\n        score_val = 0\n    elif score is not None:\n        group = 2\n        score_val = -score  # descending\n    else:\n        group = 3\n        score_val = 0\n    \n    return (group, score_val)\n\n\ndef decide(view):\n    \"\"\"\n    Exploration policy that prioritizes fresh depth-1 branches over refinement.\n    \n    Algorithm:\n    1. Build a set of explored depth-1 node IDs from history.\n    2. Rank frontier nodes by priority: unexplored depth-1 > root > scored > unscored.\n    3. Select nodes to expand:\n       - First, pick unexplored depth-1 nodes with score >= current_best (or all if few).\n       - If none available, pick the root to start a new attempt.\n       - Otherwise, pick scored nodes for refinement.\n    4. Return at most max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view.get('frontier', [])\n    history = view.get('history', [])\n    best_score = view.get('best_score', None)\n    rounds_used = view.get('rounds_used', 0)\n    max_rounds = view.get('max_parallelism', None)\n    max_parallelism = view.get('max_parallelism', 1)\n    \n    # If max_rounds is provided, check stopping condition\n    max_rounds_limit = view.get('max_rounds', None)\n    \n    # Build set of explored depth-1 node IDs from history\n    # A depth-1 node is 'explored' if it has been expanded (i.e., has children in history)\n    explored_depth1 = set()\n    for node in history:\n        nid = node.get('id')\n        depth = node.get('depth')\n        children = node.get('children_count', 0)\n        if depth == 1 and children > 0:\n            explored_depth1.add(nid)\n    \n    # Also mark nodes in frontier that have children_count > 0 as explored\n    for node in frontier:\n        if node.get('depth') == 1 and node.get('children_count', 0) > 0:\n            explored_depth1.add(node.get('id'))\n    \n    # Identify fresh (unexplored) depth-1 nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n    \n    for node in frontier:\n        nid = node.get('id')\n        depth = node.get('depth')\n        score = node.get('score')\n        \n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if nid in explored_depth1:\n                scored_frontier.append(node) if score is not None else unscored_frontier.append(node)\n            else:\n                fresh_depth1.append(node)\n        else:\n            scored_frontier.append(node) if score is not None else unscored_frontier.append(node)\n    \n    # Stop if no frontier to expand\n    if not frontier:\n        return {'expand': [], 'stop': True}\n    \n    # Stop if max rounds reached\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\n        return {'expand': [], 'stop': True}\n    \n    # Build candidate list for expansion\n    candidates = []\n    \n    # Priority 1: Fresh depth-1 branches (unexplored)\n    # Sort by score descending; only include if score >= best_score OR it's one of the top candidates\n    if fresh_depth1:\n        # Sort fresh depth-1 by score descending (handle None)\n        def fresh_key(n):\n            s = n.get('score')\n            # None treated as lowest score\n            return s if s is not None else float('-inf')\n        fresh_depth1.sort(key=fresh_key, reverse=True)\n        \n        # Take all fresh depth-1 nodes (they represent new branches worth exploring)\n        # But limit by parallelism\n        for node in fresh_depth1[:max_parallelism]:\n            candidates.append(node)\n    \n    # Priority 2: Root (for new attempts) \u2014 include if we haven't explored a fresh branch\n    # or if the best branch so far is weak\n    if not candidates and root_node:\n        # Check if expanding root makes sense: either no good branches or best is low\n        if best_score is None or best_score < 0.5:\n            candidates.append(root_node)\n    \n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    if not candidates:\n        def scored_key(n):\n            s = n.get('score')\n            return s if s is not None else float('-inf')\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            s = node.get('score')\n            if s is not None and s >= best_score:\n                candidates.append(node)\n    \n    # Priority 4: Remaining scored nodes (any refinement)\n    if not candidates:\n        def scored_key(n):\n            s = n.get('score')\n            return s if s is not None else float('-inf')\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            candidates.append(node)\n    \n    # Priority 5: Unscored nodes (exploration)\n    if not candidates:\n        unscored_frontier.sort(key=lambda n: n.get('depth', 0))\n        for node in unscored_frontier[:max_parallelism]:\n            candidates.append(node)\n    \n    # Ensure unique IDs in expand list\n    seen = set()\n    expand_ids = []\n    for node in candidates:\n        nid = node.get('id')\n        if nid not in seen:\n            seen.add(nid)\n            expand_ids.append(nid)\n    \n    # Stop condition: if we're stuck with only unscored nodes and best_score is already high\n    if expand_ids and best_score is not None and best_score >= 0.85:\n        # Check if we're just re-expanding the root with no progress\n        all_unscored = all(view.get('observations', {}).get(nid, {}).get('score') is None \n                          for nid in expand_ids)\n        if all_unscored and len([n for n in frontier if n.get('score') is not None]) > 0:\n            # We're exploring without good candidates; stop to preserve budget\n            return {'expand': [], 'stop': True}\n    \n    parallelism = min(len(expand_ids",
+        "source_hash": "80558a28406bf434e90406d2c3cbe1fba924db06a1a13a6a77cf41fc8c917a99",
+        "evaluation": {},
+        "duplicate_outcome": null,
+        "feedback_summary": {
+          "all_worlds_scored": false,
+          "mean_score": null
+        }
+      },
+      {
+        "status": "failed",
+        "phase": "replay",
+        "error": "SandboxError: Line 48: Unknown function",
+        "response": "python\n\"\"\"\nDiagnosis:\n- Incumbent (FixedParallelPolicy) greedily picks highest-scoring frontier node each round.\n- Problem 1: In world2, round 2 expanded depth-1 node (score 0.4) to depth 2 with same score 0.4 \u2014 wasted probe.\n  Refining a leaf with no improvement potential is suboptimal when a fresh branch exists.\n- Problem 2: The policy doesn't distinguish between 'fresh unexplored depth-1 branches' and 'already-explored ones'.\n  World1 had two depth-1 branches (scores 0.40 and 0.10); world2 had two (0.4 and 0.7).\n  Both worlds benefit from exploring the second depth-1 branch before refining depth-2.\n- Problem 3: The root (score None) is never ranked meaningfully. A policy should occasionally\n  re-expand the root to start a NEW attempt when existing branches show no promise.\n\nSolution:\n- Track which depth-1 branches have been 'fully explored' (expanded at least once).\n- Prioritize: (1) unexplored depth-1 branches sorted by score desc, (2) root for fresh attempts,\n  (3) remaining nodes for refinement.\n- Only refine a node if its score >= current best_score (otherwise it's unlikely to yield improvement).\n- Use parallelism when multiple unexplored depth-1 branches are available.\n- Stop when max_rounds reached or no expandable frontier remains.\n\"\"\"\n\nimport math\n\n\ndef decide(view):\n    \"\"\"\n    Exploration policy that prioritizes fresh depth-1 branches over refinement.\n    \n    Algorithm:\n    1. Build a set of explored depth-1 node IDs from history.\n    2. Rank frontier nodes by priority: unexplored depth-1 > root > scored > unscored.\n    3. Select nodes to expand:\n       - First, pick unexplored depth-1 nodes with score >= current_best (or all if few).\n       - If none available, pick the root to start a new attempt.\n       - Otherwise, pick scored nodes for refinement.\n    4. Return at most max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view.get('frontier', [])\n    history = view.get('history', [])\n    best_score = view.get('best_score', None)\n    rounds_used = view.get('rounds_used', 0)\n    max_parallelism = view.get('max_parallelism', 1)\n    \n    # If max_rounds is provided, check stopping condition\n    max_rounds_limit = view.get('max_rounds', None)\n    \n    # Build set of explored depth-1 node IDs from history\n    # A depth-1 node is 'explored' if it has been expanded (i.e., has children in history)\n    explored_depth1 = set()\n    for node in history:\n        nid = node.get('id')\n        depth = node.get('depth')\n        children = node.get('children_count', 0)\n        if depth == 1 and children > 0:\n            explored_depth1.add(nid)\n    \n    # Also mark nodes in frontier that have children_count > 0 as explored\n    for node in frontier:\n        if node.get('depth') == 1 and node.get('children_count', 0) > 0:\n            explored_depth1.add(node.get('id'))\n    \n    # Identify fresh (unexplored) depth-1 nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n    \n    for node in frontier:\n        nid = node.get('id')\n        depth = node.get('depth')\n        score = node.get('score')\n        \n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if nid in explored_depth1:\n                scored_frontier.append(node) if score is not None else unscored_frontier.append(node)\n            else:\n                fresh_depth1.append(node)\n        else:\n            scored_frontier.append(node) if score is not None else unscored_frontier.append(node)\n    \n    # Stop if no frontier to expand\n    if not frontier:\n        return {'expand': [], 'stop': True}\n    \n    # Stop if max rounds reached\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\n        return {'expand': [], 'stop': True}\n    \n    # Build candidate list for expansion\n    candidates = []\n    \n    # Priority 1: Fresh depth-1 branches (unexplored)\n    # Sort by score descending; only include if score >= best_score OR it's one of the top candidates\n    if fresh_depth1:\n        # Sort fresh depth-1 by score descending (handle None)\n        def fresh_key(n):\n            s = n.get('score')\n            # None treated as lowest score\n            return s if s is not None else float('-inf')\n        fresh_depth1.sort(key=fresh_key, reverse=True)\n        \n        # Take all fresh depth-1 nodes (they represent new branches worth exploring)\n        # But limit by parallelism\n        for node in fresh_depth1[:max_parallelism]:\n            candidates.append(node)\n    \n    # Priority 2: Root (for new attempts) \u2014 include if we haven't explored a fresh branch\n    # or if the best branch so far is weak\n    if not candidates and root_node:\n        # Check if expanding root makes sense: either no good branches or best is low\n        if best_score is None or best_score < 0.5:\n            candidates.append(root_node)\n    \n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    if not candidates:\n        def scored_key(n):\n            s = n.get('score')\n            return s if s is not None else float('-inf')\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            s = node.get('score')",
+        "source_hash": "71f4b9e9233aab723c836749864e01864127a079286db791edfaf505edc0a37b",
+        "evaluation": {},
+        "duplicate_outcome": null,
+        "feedback_summary": {
+          "all_worlds_scored": false,
+          "mean_score": null
+        }
+      },
+      {
+        "status": "failed",
+        "phase": "parse",
+        "error": "JSONDecodeError: Invalid control character at: line 2 column 92 (char 93)",
+        "response": "{\n  \"answer\": \"\\\"\\\"\\\"\\nDiagnosis:\\n- Revision 0 had unclosed parentheses and incomplete code.\n- Revision 1 used float('-inf') which is forbidden (finite numbers only).\\n- The function never completed its logic or returned a proper result.\\n\\nSolution:\\n- Complete the decide() function with proper logic.\\n- Use a large negative finite number like -999.0 instead of float('-inf').\\n- Return a proper dictionary with 'expand' list of node IDs and 'stop' boolean.\\n- Prioritize: (1) unexplored depth-1 branches, (2) root for fresh attempts,\\n  (3) promising scored nodes for refinement.\\n- Only refine nodes with score >= current best (otherwise unlikely to improve).\\n\\\"\\\"\\\"\\n\\nimport math\\n\\n\\ndef decide(view):\\n    \\\"\\\"\\\"\\n    Exploration policy that prioritizes fresh depth-1 branches over refinement.\\n    \\n    Algorithm:\\n    1. Build a set of explored depth-1 node IDs from history.\\n    2. Rank frontier nodes by priority: unexplored depth-1 > root > scored > unscored.\\n    3. Select nodes to expand:\\n       - First, pick unexplored depth-1 nodes with score >= current_best (or all if few).\\n       - If none available, pick the root to start a new attempt.\\n       - Otherwise, pick scored nodes for refinement.\\n    4. Return at most max_parallelism unique node IDs.\\n    \\\"\\\"\\\"\\n    frontier = view.get('frontier', [])\\n    history = view.get('history', [])\\n    best_score = view.get('best_score', None)\\n    rounds_used = view.get('rounds_used', 0)\\n    max_parallelism = view.get('max_parallelism', 1)\\n    \\n    # If max_rounds is provided, check stopping condition\\n    max_rounds_limit = view.get('max_rounds', None)\\n    \\n    # Build set of explored depth-1 node IDs from history\\n    # A depth-1 node is 'explored' if it has been expanded (i.e., has children in history)\\n    explored_depth1 = set()\\n    for node in history:\\n        nid = node.get('id')\\n        depth = node.get('depth')\\n        children = node.get('children_count', 0)\\n        if depth == 1 and children > 0:\\n            explored_depth1.add(nid)\\n    \\n    # Also mark nodes in frontier that have children_count > 0 as explored\\n    for node in frontier:\\n        if node.get('depth') == 1 and node.get('children_count', 0) > 0:\\n            explored_depth1.add(node.get('id'))\\n    \\n    # Identify fresh (unexplored) depth-1 nodes\\n    fresh_depth1 = []\\n    scored_frontier = []\\n    unscored_frontier = []\\n    root_node = None\\n    \\n    for node in frontier:\\n        nid = node.get('id')\\n        depth = node.get('depth')\\n        score = node.get('score')\\n        \\n        if depth == 0:\\n            root_node = node\\n        elif depth == 1:\\n            if nid in explored_depth1:\\n                if score is not None:\\n                    scored_frontier.append(node)\\n                else:\\n                    unscored_frontier.append(node)\\n            else:\\n                fresh_depth1.append(node)\\n        else:\\n            if score is not None:\\n                scored_frontier.append(node)\\n            else:\\n                unscored_frontier.append(node)\\n    \\n    # Stop if no frontier to expand\\n    if not frontier:\\n        return {'expand': [], 'stop': True}\\n    \\n    # Stop if max rounds reached\\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\\n        return {'expand': [], 'stop': True}\\n    \\n    # Build candidate list for expansion\\n    candidates = []\\n    \\n    # Priority 1: Fresh depth-1 branches (unexplored)\\n    # Sort by score descending; only include if score >= best_score OR it's one of the top candidates\\n    if fresh_depth1:\\n        # Sort fresh depth-1 by score descending (handle None)\\n        def fresh_key(n):\\n            s = n.get('score')\\n            # None treated as lowest score using finite number\\n            return s if s is not None else -999.0\\n        fresh_depth1.sort(key=fresh_key, reverse=True)\\n        \\n        # Take all fresh depth-1 nodes (they represent new branches worth exploring)\\n        # But limit by parallelism\\n        for node in fresh_depth1[:max_parallelism]:\\n            candidates.append(node)\\n    \\n    # Priority 2: Root (for new attempts) \u2014 include if we haven't explored a fresh branch\\n    # or if the best branch so far is weak\\n    if not candidates and root_node:\\n        # Check if expanding root makes sense: either no good branches or best is low\\n        if best_score is None or best_score < 0.5:\\n            candidates.append(root_node)\\n    \\n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\\n    if not candidates:\\n        def scored_key(n):\\n            s = n.get('score')\\n            return s if s is not None else -999.0\\n        scored_frontier.sort(key=scored_key, reverse=True)\\n        for node in scored_frontier[:max_parallelism]:\\n            s = node.get('score')\\n            if s is not None and s >= best_score:\\n                candidates.append(node)\\n    \\n    # Priority 4: Unsced frontier nodes (fallback)\\n    if not candidates:\\n        unscored_frontier.sort(key=lambda n: n.get('depth', 0))\\n        for node in unscored_frontier[:max_parallelism]:\\n            candidates.append(node)\\n    \\n    # Build result\\n    expand_ids = [node.get('id') for node in candidates]\\n    \\n    # Stop if we have no candidates\\n    stop = len(candidates) == 0\\n    \\n    result = {'expand': expand_ids, 'stop': stop}\\n    \\n    # Add parallelism if more than one candidate\\n    if len(candidates) > 1:\\n        result['parallelism'] = len(candidates)\\n    \\n    return result\\n\"\n}",
+        "source_hash": null,
+        "evaluation": {},
+        "duplicate_outcome": null,
+        "feedback_summary": {
+          "all_worlds_scored": false,
+          "mean_score": null
+        }
+      },
+      {
+        "status": "failed",
+        "phase": "replay",
+        "error": "SandboxError: Line 47: Unknown function",
+        "response": "python\n\"\"\"\nDiagnosis:\n- Incumbent greedily picks highest-scoring frontier node each round.\n- Problem 1: Expands depth-1 node with score 0.4 to depth 2 with same score 0.4 \u2014 wasted probe.\n  Refining a leaf with no improvement potential is suboptimal when a fresh branch exists.\n- Problem 2: Doesn't distinguish between fresh unexplored depth-1 branches and already-explored ones.\n  Both worlds benefit from exploring the second depth-1 branch before refining depth-2.\n- Problem 3: The root (score None) is never ranked meaningfully. Policy should occasionally\n  re-expand the root to start a NEW attempt when existing branches show no promise.\n\nSolution:\n- Track which depth-1 branches have been 'fully explored' (expanded at least once).\n- Prioritize: (1) unexplored depth-1 branches sorted by score desc, (2) root for fresh attempts,\n  (3) remaining nodes for refinement.\n- Only refine a node if its score >= current best_score (otherwise unlikely to yield improvement).\n- Use parallelism when multiple unexplored depth-1 branches are available.\n- Stop when max_rounds reached or no expandable frontier remains.\n\"\"\"\n\nimport math\n\n\ndef decide(view):\n    \"\"\"\n    Exploration policy that prioritizes fresh depth-1 branches over refinement.\n    \n    Algorithm:\n    1. Build a set of explored depth-1 node IDs from history.\n    2. Rank frontier nodes by priority: unexplored depth-1 > root > scored >= best > unscored.\n    3. Select nodes to expand:\n       - First, pick unexplored depth-1 nodes sorted by score descending.\n       - If none available, pick the root to start a new attempt.\n       - Otherwise, pick scored frontier nodes with score >= best_score for refinement.\n       - Fallback: unscored frontier nodes.\n    4. Return at most max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view['frontier']\n    history = view['history']\n    best_score = view['best_score']\n    rounds_used = view['rounds_used']\n    max_parallelism = view['max_parallelism']\n\n    max_rounds_limit = view.get('max_rounds', None)\n\n    # Build set of explored depth-1 node IDs from history\n    # A depth-1 node is 'explored' if it has been expanded (has children in history)\n    explored_depth1 = set()\n    for node in history:\n        nid = node['id']\n        depth = node['depth']\n        children = node['children_count']\n        if depth == 1 and children > 0:\n            explored_depth1.add(nid)\n\n    # Also mark nodes in frontier that have children_count > 0 as explored\n    for node in frontier:\n        if node['depth'] == 1 and node['children_count'] > 0:\n            explored_depth1.add(node['id'])\n\n    # Categorize frontier nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n\n    for node in frontier:\n        nid = node['id']\n        depth = node['depth']\n        score = node['score']\n\n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if nid in explored_depth1:\n                if score is not None:\n                    scored_frontier.append(node)\n                else:\n                    unscored_frontier.append(node)\n            else:\n                fresh_depth1.append(node)\n        else:\n            if score is not None:\n                scored_frontier.append(node)\n            else:\n                unscored_frontier.append(node)\n\n    # Stop if no frontier to expand\n    if not frontier:\n        return {'expand': [], 'stop': True}\n\n    # Stop if max rounds reached\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\n        return {'expand': [], 'stop': True}\n\n    # Build candidate list for expansion\n    candidates = []\n\n    # Priority 1: Fresh depth-1 branches (unexplored)\n    # Sort by score descending; None treated as lowest score\n    def fresh_key(n):\n        s = n['score']\n        return s if s is not None else -999.0\n    fresh_depth1.sort(key=fresh_key, reverse=True)\n\n    # Take all fresh depth-1 nodes (they represent new branches worth exploring)\n    # But limit by parallelism\n    for node in fresh_depth1[:max_parallelism]:\n        candidates.append(node)\n\n    # Priority 2: Root (for new attempts)\n    # Include if we haven't selected any candidates yet\n    if len(candidates) == 0 and root_node is not None:\n        candidates.append(root_node)\n\n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    if len(candidates) == 0:\n        def scored_key(n):\n            s = n['score']\n            return s if s is not None else -999.0\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            s = node['score']\n            if s is not None and s >= best_score:\n                candidates.append(node)\n\n    # Priority 4: Unsced frontier nodes (fallback)\n    if len(candidates) == 0:\n        unscored_frontier.sort(key=lambda n: n['depth'])\n        for node in unscored_frontier[:max_parallelism]:\n            candidates.append(node)\n\n    # Build result\n    expand_ids = [node['id'] for node in candidates]\n\n    # Stop if we have no candidates\n    stop = len(candidates) == 0\n\n    result = {'expand': expand_ids, 'stop': stop}\n\n    # Add parallelism if more than one candidate\n    if len(candidates) > 1:\n        result['parallelism'] = len(candidates)\n\n    return result",
+        "source_hash": "07acf1f079da6d67284c6e417cab0559d6b77972d73f7992d3fae2c9f03fbdc9",
+        "evaluation": {},
+        "duplicate_outcome": null,
+        "feedback_summary": {
+          "all_worlds_scored": false,
+          "mean_score": null
+        }
+      },
+      {
+        "status": "scored",
+        "phase": null,
+        "error": null,
+        "response": "\"\"\"\nDiagnosis:\n- Line 47 error: `set()` is not in the allowed builtins (only dict/list/etc. are permitted).\n- Fix: Replace `set()` usage with a dict mapping node IDs to True for membership tracking.\n- Algorithm unchanged: prioritize unexplored depth-1 branches, then root, then refinement.\n\"\"\"\n\nimport math\n\n\ndef decide(view):\n    \"\"\"\n    Exploration policy that prioritizes fresh depth-1 branches over refinement.\n    \n    Algorithm:\n    1. Build a dict of explored depth-1 node IDs from history.\n    2. Rank frontier nodes by priority: unexplored depth-1 > root > scored >= best > unscored.\n    3. Select nodes to expand:\n       - First, pick unexplored depth-1 nodes sorted by score descending.\n       - If none available, pick the root to start a new attempt.\n       - Otherwise, pick scored frontier nodes with score >= best_score for refinement.\n       - Fallback: unscored frontier nodes.\n    4. Return at most max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view['frontier']\n    history = view['history']\n    best_score = view['best_score']\n    rounds_used = view['rounds_used']\n    max_parallelism = view['max_parallelism']\n\n    max_rounds_limit = view.get('max_rounds', None)\n\n    # Build dict of explored depth-1 node IDs from history (replaces set)\n    # A depth-1 node is 'explored' if it has been expanded (has children in history)\n    explored_depth1 = {}\n    for node in history:\n        nid = node['id']\n        depth = node['depth']\n        children = node['children_count']\n        if depth == 1 and children > 0:\n            explored_depth1[nid] = True\n\n    # Also mark nodes in frontier that have children_count > 0 as explored\n    for node in frontier:\n        if node['depth'] == 1 and node['children_count'] > 0:\n            explored_depth1[node['id']] = True\n\n    # Categorize frontier nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n\n    for node in frontier:\n        nid = node['id']\n        depth = node['depth']\n        score = node['score']\n\n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if nid in explored_depth1:\n                if score is not None:\n                    scored_frontier.append(node)\n                else:\n                    unscored_frontier.append(node)\n            else:\n                fresh_depth1.append(node)\n        else:\n            if score is not None:\n                scored_frontier.append(node)\n            else:\n                unscored_frontier.append(node)\n\n    # Stop if no frontier to expand\n    if not frontier:\n        return {'expand': [], 'stop': True}\n\n    # Stop if max rounds reached\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\n        return {'expand': [], 'stop': True}\n\n    # Build candidate list for expansion\n    candidates = []\n\n    # Priority 1: Fresh depth-1 branches (unexplored)\n    # Sort by score descending; None treated as lowest score\n    def fresh_key(n):\n        s = n['score']\n        return s if s is not None else -999.0\n    fresh_depth1.sort(key=fresh_key, reverse=True)\n\n    # Take all fresh depth-1 nodes (they represent new branches worth exploring)\n    # But limit by parallelism\n    for node in fresh_depth1[:max_parallelism]:\n        candidates.append(node)\n\n    # Priority 2: Root (for new attempts)\n    # Include if we haven't selected any candidates yet\n    if len(candidates) == 0 and root_node is not None:\n        candidates.append(root_node)\n\n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    if len(candidates) == 0:\n        def scored_key(n):\n            s = n['score']\n            return s if s is not None else -999.0\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            s = node['score']\n            if s is not None and s >= best_score:\n                candidates.append(node)\n\n    # Priority 4: Unsced frontier nodes (fallback)\n    if len(candidates) == 0:\n        unscored_frontier.sort(key=lambda n: n['depth'])\n        for node in unscored_frontier[:max_parallelism]:\n            candidates.append(node)\n\n    # Build result\n    expand_ids = [node['id'] for node in candidates]\n\n    # Stop if we have no candidates\n    stop = len(candidates) == 0\n\n    result = {'expand': expand_ids, 'stop': stop}\n\n    # Add parallelism if more than one candidate\n    if len(candidates) > 1:\n        result['parallelism'] = len(candidates)\n\n    return result",
+        "source_hash": "e7cc28b60df3792230477966a727e905c267c0f32d2455f09f3c6c8a29a82c8e",
+        "evaluation": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.865,
+          "total_probes": 8,
+          "attempted_expansions": 8,
+          "unsupported_expansions": 0,
+          "total_rounds": 8,
+          "empty_rounds": 0,
+          "recorded_cost": 0.0
+        },
+        "duplicate_outcome": false,
+        "feedback_summary": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.865,
+          "total_probes": 8,
+          "attempted_expansions": 8,
+          "unsupported_expansions": 0,
+          "total_rounds": 8,
+          "empty_rounds": 0,
+          "recorded_cost": 0.0
+        }
+      },
+      {
+        "status": "scored",
+        "phase": null,
+        "error": null,
+        "response": "python\n\"\"\"\nDiagnosis:\n- World 1: Found best_score=0.9 in round 2, then wasted 2 more rounds exploring a low-scoring branch (0.1->0.4).\n- World 2: Found best_score=0.9 only in round 4; wasted round 2 refining a dead-end (0.4->0.4).\n- Root re-expansion in rounds 3+ keeps spawning new depth-1 nodes but doesn't help when we already have a high score.\n- Algorithmic change: Add score-based stopping logic. If best_score is high (>= 0.85) AND the best remaining frontier node's score is low (<= 0.3), stop.\n  Also, after finding a high score, prefer deepening promising branches (score >= 0.6) over re-expanding root.\n  Add a \"good enough\" threshold: once best_score >= threshold AND all frontier nodes have low scores, stop.\n  This reduces wasted probes while maintaining quality.\n\"\"\"\n\nimport math\n\ndef decide(view):\n    \"\"\"\n    Exploration policy with adaptive stopping and score-aware branching.\n\n    Algorithm:\n    1. Track explored depth-1 nodes from history to avoid redundant root expansions.\n    2. Categorize frontier nodes into fresh_depth1, scored_frontier, unscored_frontier.\n    3. Adaptive stopping: if best_score >= 0.85 AND best frontier score <= 0.3, stop.\n    4. Priority ranking when not stopping:\n       - If we already have a high best_score, prioritize deepening promising branches\n         (score >= 0.6) over root expansion.\n       - Otherwise, use standard priority: fresh depth-1 > root > scored >= best > unscored.\n    5. Select up to max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view['frontier']\n    history = view['history']\n    best_score = view['best_score']\n    rounds_used = view['rounds_used']\n    max_parallelism = view['max_parallelism']\n\n    max_rounds_limit = view.get('max_rounds', None)\n\n    # Build dict of explored depth-1 node IDs from history (replaces set)\n    # A depth-1 node is 'explored' if it has been expanded (has children in history)\n    explored_depth1 = {}\n    for node in history:\n        nid = node['id']\n        depth = node['depth']\n        children = node['children_count']\n        if depth == 1 and children > 0:\n            explored_depth1[nid] = True\n\n    # Also mark nodes in frontier that have children_count > 0 as explored\n    for node in frontier:\n        if node['depth'] == 1 and node['children_count'] > 0:\n            explored_depth1[node['id']] = True\n\n    # Categorize frontier nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n\n    for node in frontier:\n        nid = node['id']\n        depth = node['depth']\n        score = node['score']\n\n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if nid in explored_depth1:\n                if score is not None:\n                    scored_frontier.append(node)\n                else:\n                    unscored_frontier.append(node)\n            else:\n                fresh_depth1.append(node)\n        else:\n            if score is not None:\n                scored_frontier.append(node)\n            else:\n                unscored_frontier.append(node)\n\n    # Stop if no frontier to expand\n    if not frontier:\n        return {'expand': [], 'stop': True}\n\n    # Stop if max rounds reached\n    if max_rounds_limit is not None and rounds_used >= max_rounds_limit:\n        return {'expand': [], 'stop': True}\n\n    # Adaptive stopping: if best_score is high enough and remaining frontier is weak, stop\n    # This prevents wasting probes on low-potential branches after finding a good solution\n    if best_score is not None and best_score >= 0.85:\n        best_frontier_score = None\n        for node in frontier:\n            s = node['score']\n            if s is not None:\n                if best_frontier_score is None or s > best_frontier_score:\n                    best_frontier_score = s\n        # If best frontier node score is low (<= 0.3), remaining work is unlikely to help\n        if best_frontier_score is not None and best_frontier_score <= 0.3:\n            return {'expand': [], 'stop': True}\n\n    # Build candidate list for expansion\n    candidates = []\n\n    # Determine if we have a high score already (enables prioritization of promising branches)\n    has_high_score = best_score is not None and best_score >= 0.6\n\n    # Priority 1: Fresh depth-1 branches (unexplored)\n    # Sort by score descending; None treated as lowest score\n    def fresh_key(n):\n        s = n['score']\n        return s if s is not None else -999.0\n    fresh_depth1.sort(key=fresh_key, reverse=True)\n\n    # If we already have a high score, we may not want to keep exploring fresh branches\n    # unless they have promising scores. Take fresh nodes with score >= 0.3, or all if none qualify\n    if has_high_score:\n        promising_fresh = [n for n in fresh_depth1 if n['score'] is not None and n['score'] >= 0.3]\n        if not promising_fresh:\n            # Fall back to the best fresh node anyway\n            promising_fresh = fresh_depth1[:1] if fresh_depth1 else []\n        for node in promising_fresh[:max_parallelism]:\n            candidates.append(node)\n    else:\n        # Standard: take all fresh depth-1 nodes up to parallelism limit\n        for node in fresh_depth1[:max_parallelism]:\n            candidates.append(node)\n\n    # Priority 2: Root (for new attempts) - only if we haven't selected enough candidates\n    if len(candidates) < max_parallelism and root_node is not None:\n        candidates.append(root_node)\n\n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    if len(candidates) < max_parallelism:\n        def scored_key(n):\n            s = n['score']\n            return s if s is not None else -999.0\n        scored_frontier.sort(key=scored_key, reverse=True)\n        for node in scored_frontier[:max_parallelism]:\n            s = node['score']\n            if s is not None and s >= best_score:\n                candidates.append(node)\n                if len(candidates) >= max_parallelism:\n                    break\n\n    # Priority 4: Unsced frontier nodes (fallback)\n    if len(candidates) < max_parallelism:\n        unscored_frontier.sort(key=lambda n: n['depth'])\n        for node in unscored_frontier[:max_parallelism]:\n            candidates.append(node)\n            if len(candidates) >= max_parallelism:\n                break\n\n    # Build result\n    expand_ids = [node['id'] for node in candidates]\n\n    # Stop if we have no candidates\n    stop = len(candidates) == 0\n\n    result = {'expand': expand_ids, 'stop': stop}\n\n    # Add parallelism if more than one candidate\n    if len(candidates) > 1:\n        result['parallelism'] = len(candidates)\n\n    return result",
+        "source_hash": "5709560e5b2496f58a4070c3020a0efd0dd4490d25654560508e44cede5832da",
+        "evaluation": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.87,
+          "total_probes": 7,
+          "attempted_expansions": 7,
+          "unsupported_expansions": 0,
+          "total_rounds": 7,
+          "empty_rounds": 0,
+          "recorded_cost": 0.0
+        },
+        "duplicate_outcome": false,
+        "feedback_summary": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.87,
+          "total_probes": 7,
+          "attempted_expansions": 7,
+          "unsupported_expansions": 0,
+          "total_rounds": 7,
+          "empty_rounds": 0,
+          "recorded_cost": 0.0
+        }
+      },
+      {
+        "status": "scored",
+        "phase": null,
+        "error": null,
+        "response": "python\n\"\"\"\nDiagnosis:\n- World 1: Found best_score=0.9 in round 2, then wasted 2 more rounds exploring a low-scoring branch (0.1->0.4).\n- World 2: Found best_score=0.9 only in round 4; wasted round 2 refining a dead-end (0.4->0.4).\n- Root re-expansion in rounds 3+ keeps spawning new depth-1 nodes but doesn't help when we already have a high score.\n- The current stopping threshold (0.85) is too high - it should trigger at 0.7 when frontier is weak.\n- Dead-end detection: if a node's child score <= parent score, it's a dead-end; deprioritize heavily.\n- Algorithmic change:\n  1. Lower stopping threshold to 0.7 (more aggressive early stopping when solution is good enough).\n  2. Add parent-child score comparison: track parent scores from history; if child score <= parent,\n     mark as dead-end and deprioritize (score penalty of -1.0).\n  3. When best_score >= 0.6, prioritize deepening promising branches (score >= 0.5) over root\n     expansion; only expand root if no promising scored nodes remain.\n  4. Track rounds without best_score improvement; if no improvement for 2 consecutive rounds, stop.\n\"\"\"\n\nimport math\n\ndef decide(view):\n    \"\"\"\n    Exploration policy with adaptive stopping and score-aware branching.\n\n    Algorithm:\n    1. Build parent score map from history to detect dead-ends (child <= parent).\n    2. Categorize frontier: fresh_depth1, scored_frontier, unscored_frontier, root.\n    3. Adaptive stopping: if best_score >= 0.7 AND best frontier score <= 0.3, stop.\n    4. Dead-end detection: if child score <= parent score, apply -1.0 score penalty.\n    5. Priority when not stopping:\n       - If best_score >= 0.6: prefer deepening promising branches (score >= 0.5) over root.\n       - Otherwise: fresh depth-1 > root > scored >= best > unscored.\n    6. Select up to max_parallelism unique node IDs.\n    \"\"\"\n    frontier = view['frontier']\n    history = view['history']\n    best_score = view['best_score']\n    rounds_used = view['rounds_used']\n    max_parallelism = view['max_parallelism']\n\n    # Build parent score map from history for dead-end detection\n    parent_scores = {}\n    for node in history:\n        nid = node['id']\n        depth = node['depth']\n        score = node['score']\n        if depth > 0 and node.get('parent_id') is not None:\n            parent_scores[nid] = score\n\n    # Categorize frontier nodes\n    fresh_depth1 = []\n    scored_frontier = []\n    unscored_frontier = []\n    root_node = None\n\n    for node in frontier:\n        nid = node['id']\n        depth = node['depth']\n        score = node['score']\n\n        if depth == 0:\n            root_node = node\n        elif depth == 1:\n            if score is not None:\n                scored_frontier.append(node)\n            else:\n                unscored_frontier.append(node)\n        else:\n            if score is not None:\n                scored_frontier.append(node)\n            else:\n                unscored_frontier.append(node)\n\n    # Stop if no frontier\n    if not frontier:\n        return {'expand': [], 'stop': True}\n\n    # Adaptive stopping: best score high enough + weak frontier = stop\n    # Lowered threshold from 0.85 to 0.7 for earlier stopping when solution is good\n    if best_score is not None and best_score >= 0.7:\n        best_frontier_score = None\n        for node in frontier:\n            s = node['score']\n            if s is not None:\n                if best_frontier_score is None or s > best_frontier_score:\n                    best_frontier_score = s\n        if best_frontier_score is not None and best_frontier_score <= 0.3:\n            return {'expand': [], 'stop': True}\n\n    # Build candidate list\n    candidates = []\n    has_high_score = best_score is not None and best_score >= 0.6\n\n    # Helper key for sorting (None treated as lowest)\n    def score_key(n):\n        s = n['score']\n        return s if s is not None else -999.0\n\n    # Priority 1: Fresh depth-1 branches, sorted by score descending\n    fresh_depth1.sort(key=score_key, reverse=True)\n\n    if has_high_score:\n        # When we have a high score, only explore fresh branches with promising scores\n        promising_fresh = [n for n in fresh_depth1 if n['score'] is not None and n['score'] >= 0.3]\n        if not promising_fresh:\n            promising_fresh = fresh_depth1[:1] if fresh_depth1 else []\n        for node in promising_fresh[:max_parallelism]:\n            candidates.append(node)\n    else:\n        for node in fresh_depth1[:max_parallelism]:\n            candidates.append(node)\n\n    # Priority 2: Root (for new attempts) - only if we haven't selected enough\n    # When we have a high score, only add root if no promising scored nodes remain\n    if has_high_score:\n        # Check if any promising scored nodes exist\n        promising_scored = [n for n in scored_frontier if n['score'] is not None and n['score'] >= 0.5]\n        if not promising_scored and len(candidates) < max_parallelism and root_node is not None:\n            candidates.append(root_node)\n    else:\n        if len(candidates) < max_parallelism and root_node is not None:\n            candidates.append(root_node)\n\n    # Priority 3: Scored frontier nodes with score >= best_score (refinement of promising paths)\n    # Apply dead-end detection: if child score <= parent score, deprioritize heavily\n    def scored_key_with_deadend(n):\n        s = n['score']\n        if s is None:\n            return -999.0\n        parent_s = parent_scores.get(n['id'])\n        if parent_s is not None and s <= parent_s:\n            # Dead-end: child didn't improve over parent, apply penalty\n            return s - 1.0\n        return s\n\n    scored_frontier.sort(key=scored_key_with_deadend, reverse=True)\n    for node in scored_frontier[:max_parallelism]:\n        s = node['score']\n        if s is not None and s >= best_score:\n            candidates.append(node)\n            if len(candidates) >= max_parallelism:\n                break\n\n    # Priority 4: Unsced frontier nodes (fallback)\n    if len(candidates) < max_parallelism:\n        unscored_frontier.sort(key=lambda n: n['depth'])\n        for node in unscored_frontier[:max_parallelism]:\n            candidates.append(node)\n            if len(candidates) >= max_parallelism:\n                break\n\n    expand_ids = [node['id'] for node in candidates]\n    stop = len(candidates) == 0\n\n    result = {'expand': expand_ids, 'stop': stop}\n\n    if len(candidates) > 1:\n        result['parallelism'] = len(candidates)\n\n    return result",
+        "source_hash": "3eb44d3b36693a7d2f38e87bd83e48ce92c41d26ef7db3a11105d437492be184",
+        "evaluation": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.628125,
+          "total_probes": 5,
+          "attempted_expansions": 8,
+          "unsupported_expansions": 3,
+          "total_rounds": 8,
+          "empty_rounds": 3,
+          "recorded_cost": 0.0
+        },
+        "duplicate_outcome": false,
+        "feedback_summary": {
+          "world_count": 2,
+          "all_worlds_scored": true,
+          "mean_score": 0.628125,
+          "total_probes": 5,
+          "attempted_expansions": 8,
+          "unsupported_expansions": 3,
+          "total_rounds": 8,
+          "empty_rounds": 3,
+          "recorded_cost": 0.0
+        }
+      },
+      {
+        "status": "failed",
+        "phase": "generation",
+        "error": "RuntimeError: HTTP 400: {\"error\":{\"code\":400,\"message\":\"request (12501 tokens) exceeds the available context size (12288 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":12501,\"n_ctx\":12288}}",
+        "response": null,
+        "source_hash": null,
+        "evaluation": {},
+        "duplicate_outcome": null,
+        "feedback_summary": {
+          "all_worlds_scored": false,
+          "mean_score": null
+        }
+      }
+    ],
+    "selected_policy_type": "SourcePolicy",
+    "llm_source_selected": true,
+    "selected_source_sha256": "5709560e5b2496f58a4070c3020a0efd0dd4490d25654560508e44cede5832da",
+    "selected_revision": 6,
+    "validation_worlds_used": 2,
+    "validation_evaluation": {
+      "validation_scores": {
+        "incumbent": 0.865,
+        "challenger": 0.87
+      },
+      "validation_world_ids": [
+        "43b7a55e-14b9-42ac-8a69-e5594f86d0b9",
+        "20f4ce45-ce1c-4b53-ad7f-107ab4df3eca"
+      ],
+      "validation_status": "evaluated",
+      "validation_reports": [
+        {
+          "role": "incumbent",
+          "world_id": "43b7a55e-14b9-42ac-8a69-e5594f86d0b9",
+          "score": 0.865,
+          "best_score": 0.9,
+          "raw_quality": 0.9,
+          "probes": 4,
+          "attempted_expansions": 4,
+          "rounds": 4
+        },
+        {
+          "role": "incumbent",
+          "world_id": "20f4ce45-ce1c-4b53-ad7f-107ab4df3eca",
+          "score": 0.865,
+          "best_score": 0.9,
+          "raw_quality": 0.9,
+          "probes": 4,
+          "attempted_expansions": 4,
+          "rounds": 4
+        },
+        {
+          "role": "challenger",
+          "world_id": "43b7a55e-14b9-42ac-8a69-e5594f86d0b9",
+          "score": 0.875,
+          "best_score": 0.9,
+          "raw_quality": 0.9,
+          "probes": 3,
+          "attempted_expansions": 3,
+          "rounds": 3
+        },
+        {
+          "role": "challenger",
+          "world_id": "20f4ce45-ce1c-4b53-ad7f-107ab4df3eca",
+          "score": 0.865,
+          "best_score": 0.9,
+          "raw_quality": 0.9,
+          "probes": 4,
+          "attempted_expansions": 4,
+          "rounds": 4
+        }
+      ]
+    },
+    "developer_calls": 8,
+    "improver_total_llm_calls": 16,
+    "preparation_calls": 24
+  },
+  "baseline_calls": 256,
+  "dream_all_in_calls": 248,
+  "all_quality_non_decreasing": true,
+  "strict_win": true
+}

@@ -1,4 +1,5 @@
 import copy
+import json
 
 import pytest
 
@@ -76,8 +77,46 @@ def test_feedback_compresses_replay_boundaries_without_hiding_early_progress():
     assert world["steps"][1]["repeated_rounds"] == 99
     assert world["steps"][1]["last_round_number"] == 100
     assert feedback["summary"]["empty_rounds"] == 99
+    assert feedback["summary"]["attempted_expansions"] == 100
+    assert feedback["summary"]["unsupported_expansions"] == 99
     assert not world["steps_truncated"]
     assert len(trajectory.steps) == 100
+
+
+def test_tight_feedback_budget_retains_decision_evidence():
+    from dreamrsi.models.replay import ReplayStep, ReplayTrajectory
+
+    root = {"id": "root", "depth": 0, "score": None, "children_count": 0}
+    leaf = {"id": "leaf", "depth": 1, "score": 0.6, "children_count": 0}
+    trajectory = ReplayTrajectory(
+        "world",
+        "policy",
+        steps=[
+            ReplayStep(1, ["root"], ["leaf"], 0.6, 1, [root]),
+            ReplayStep(2, ["leaf"], ["result"], 0.9, 2, [root, leaf]),
+        ],
+        observations={
+            "leaf": {
+                "depth": 1,
+                "score": 0.6,
+                "observation": "x" * 5000,
+                "diagnostics": {},
+            },
+            "result": {"depth": 2, "score": 0.9, "diagnostics": {}},
+        },
+        replay_score=0.9,
+    )
+    original = copy.deepcopy(trajectory.to_dict())
+    feedback = LLMPolicyDeveloper(
+        lambda request: "", config=DeveloperConfig(max_feedback_chars=3000)
+    ).feedback([trajectory])
+    world = feedback["trajectories"][0]
+    assert world["decision_trace"][0]["selected"] == [
+        {"depth": 0, "score": None, "children_count": 0}
+    ]
+    assert world["decision_trace"][1]["revealed"] == [{"depth": 2, "score": 0.9}]
+    assert len(json.dumps(feedback)) <= 3000
+    assert trajectory.to_dict() == original
 
 
 async def test_wrong_world_pool_cannot_be_reported_as_a_scored_revision():
@@ -265,3 +304,133 @@ async def test_developer_resume_can_evaluate_already_received_response():
     assert len(calls) == 1
     assert len(candidates) == 1
     assert resumed.history[0]["status"] == "scored"
+
+
+async def test_developer_stops_repeated_outcome_and_resume_does_not_recharge():
+    from dreamrsi.models.replay import ReplayTrajectory
+
+    code = 'def decide(view):\n    return {"expand": [], "stop": True}'
+    calls = []
+
+    def generate(request):
+        calls.append(request["revision"])
+        return code + f"\n# revision {request['revision']}"
+
+    async def evaluate(candidate):
+        return [ReplayTrajectory("world", "candidate", replay_score=2)]
+
+    incumbent = SourcePolicy(PolicyArtifact(code), PolicySandbox())
+    baseline = [ReplayTrajectory("world", "incumbent", replay_score=1)]
+    config = DeveloperConfig(revisions=5, max_stalled_revisions=None)
+    developer = LLMPolicyDeveloper(generate, config=config)
+    candidates = await developer.develop(incumbent, baseline, evaluate, session_id="same-outcome")
+    assert calls == [0, 1]
+    assert len(candidates) == 2
+    assert developer.history[-1]["duplicate_outcome"] is True
+    assert developer.history[-1]["early_stop_reason"] == "duplicate_outcome"
+
+    resumed = LLMPolicyDeveloper(generate, config=config)
+    resumed.history = copy.deepcopy(developer.history)
+    assert (
+        len(await resumed.develop(incumbent, baseline, evaluate, session_id="same-outcome")) == 2
+    )
+    assert calls == [0, 1]
+
+
+async def test_developer_names_duplicate_behavior_when_revisions_continue():
+    from dreamrsi.models.replay import ReplayTrajectory
+
+    code = 'def decide(view):\n    return {"expand": [], "stop": True}'
+    requests = []
+
+    def generate(request):
+        requests.append(copy.deepcopy(request))
+        return code + f"\n# revision {request['revision']}"
+
+    async def evaluate(candidate):
+        return [ReplayTrajectory("world", "candidate", replay_score=2)]
+
+    developer = LLMPolicyDeveloper(
+        generate,
+        config=DeveloperConfig(
+            revisions=3,
+            max_stalled_revisions=3,
+            stop_on_duplicate_outcome=False,
+        ),
+    )
+    await developer.develop(
+        SourcePolicy(PolicyArtifact(code), PolicySandbox()),
+        [ReplayTrajectory("world", "incumbent", replay_score=1)],
+        evaluate,
+    )
+    assert len(requests) == 3
+    assert "same replay decisions" in requests[2]["revision_goal"]
+
+
+async def test_developer_stops_after_two_non_improving_revisions():
+    from dreamrsi.models.replay import ReplayTrajectory
+
+    code = 'def decide(view):\n    return {"expand": [], "stop": True}'
+    calls = []
+    values = iter([1.0, 0.5])
+
+    def generate(request):
+        calls.append(request["revision"])
+        return code + f"\n# revision {request['revision']}"
+
+    async def evaluate(candidate):
+        return [ReplayTrajectory("world", "candidate", replay_score=next(values))]
+
+    developer = LLMPolicyDeveloper(generate, config=DeveloperConfig(revisions=5))
+    candidates = await developer.develop(
+        SourcePolicy(PolicyArtifact(code), PolicySandbox()),
+        [ReplayTrajectory("world", "incumbent", replay_score=2)],
+        evaluate,
+        session_id="stalled",
+    )
+    assert calls == [0, 1]
+    assert len(candidates) == 2
+    assert developer.history[-1]["duplicate_outcome"] is False
+    assert developer.history[-1]["early_stop_reason"] == "stalled_revisions"
+
+
+async def test_developer_request_omits_repeated_programs_and_baseline_trajectories():
+    from dreamrsi.models.replay import ReplayTrajectory
+
+    code = 'def decide(view):\n    return {"expand": [], "stop": True}'
+    requests = []
+    values = iter([2.0, 3.0])
+
+    def generate(request):
+        requests.append(copy.deepcopy(request))
+        return code + f"\n# revision {request['revision']}"
+
+    async def evaluate(candidate):
+        return [ReplayTrajectory("world", "candidate", replay_score=next(values))]
+
+    developer = LLMPolicyDeveloper(generate, revisions=2)
+    await developer.develop(
+        SourcePolicy(PolicyArtifact(code), PolicySandbox()),
+        [ReplayTrajectory("world", "incumbent", replay_score=1)],
+        evaluate,
+    )
+    second = requests[1]
+    assert second["source"] == code + "\n# revision 0"
+    assert second["best_source"] is None
+    assert second["evaluated_source"] is None
+    assert set(second["baseline_feedback"]) == {"summary"}
+    assert second["feedback"]["trajectories"]
+    assert len(second["revision_history"]) == 1
+
+
+def test_developer_early_stop_config_is_validated():
+    with pytest.raises(ValueError, match="max_stalled_revisions"):
+        DeveloperConfig(max_stalled_revisions=0)
+    with pytest.raises(ValueError, match="stop_on_duplicate_outcome"):
+        DeveloperConfig(stop_on_duplicate_outcome=1)
+
+
+def test_developer_allows_unbounded_model_wait_only():
+    assert DeveloperConfig(model_timeout_s=None).model_timeout_s is None
+    with pytest.raises(ValueError, match="policy_timeout_s"):
+        DeveloperConfig(policy_timeout_s=None)

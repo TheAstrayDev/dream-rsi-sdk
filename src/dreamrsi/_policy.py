@@ -21,7 +21,10 @@ def validate_batch(decision, view, max_parallelism):
     batch = list(decision.expand)
     eligible = {node.id for node in view.frontier}
     if any(not isinstance(nid, str) or nid not in eligible for nid in batch):
-        raise PolicyError("Policy selected a node outside the observed frontier")
+        raise PolicyError(
+            "Policy selected a node outside the observed frontier; return an ID "
+            "from the current view['frontier'], never a literal root ID"
+        )
     if len(set(batch)) != len(batch):
         raise PolicyError("Policy batch contains duplicate node IDs")
     workers = decision.parallelism

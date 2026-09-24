@@ -46,6 +46,47 @@ class DefaultMethod:
         self.online = online
         self.force_developer = force_developer
 
+    @staticmethod
+    def _has_replay_opportunity(world, trajectory, quality_metric, incumbent_quality):
+        """Optimistic bound on quality or probe gains in a recorded world.
+
+        Reaching a node costs at least its depth in recorded probes. Root
+        branch ordering can cost more, so this bound may allow a futile search,
+        but must never reject a feasible replay improvement.
+        """
+        from dreamrsi.views import revealed_context
+
+        nodes = list(world.tree.iter_nodes())
+        if not nodes or trajectory.total_probes < 0:
+            return True
+        observations = revealed_context(world.tree, {node.id for node in nodes})[
+            "observations"
+        ]
+        for node in nodes:
+            try:
+                quality = (
+                    quality_metric(observations[node.id])
+                    if callable(quality_metric)
+                    else node.score
+                )
+            except (KeyError, TypeError, ValueError):
+                if node.is_root and node.score is None:
+                    continue
+                return True
+            if quality is None and node.is_root:
+                continue
+            if (
+                isinstance(quality, bool)
+                or not isinstance(quality, (int, float))
+                or not math.isfinite(quality)
+            ):
+                return True
+            if quality + 1e-9 >= incumbent_quality and node.depth < trajectory.total_probes:
+                return True
+            if quality > incumbent_quality + 1e-9 and node.depth <= trajectory.total_probes:
+                return True
+        return False
+
     async def improve(self, runtime: DreamRSI, task: Any, rounds: int = 5) -> RunResult:
         if isinstance(rounds, bool) or not isinstance(rounds, int) or rounds < 1:
             raise ConfigurationError("rounds must be a positive integer")
@@ -231,12 +272,21 @@ class DefaultMethod:
             best_challenger_trajectories = None
             best_challenger_qualities = None
             best_world_scores = {}
-            incumbent_probes = sum(traj.total_probes for traj in incumbent_trajectories)
+            # A replay boundary has no recorded child, but the same action on a
+            # fresh task can still consume a live model call. Do not treat it
+            # as a demonstrated call saving when selecting a challenger.
+            def attempted_calls(trajectories):
+                return sum(
+                    max(traj.total_probes, sum(len(step.batch) for step in traj.steps))
+                    for traj in trajectories
+                )
+
+            incumbent_attempts = attempted_calls(incumbent_trajectories)
 
             async def select_challenger(
                 challengers,
                 baseline_quality=tuple(incumbent_quality),
-                baseline_probes=incumbent_probes,
+                baseline_attempts=incumbent_attempts,
             ):
                 nonlocal best_challenger, best_challenger_avg
                 nonlocal best_challenger_trajectories, best_challenger_qualities
@@ -263,19 +313,17 @@ class DefaultMethod:
                         )
                     ):
                         continue
-                    probes = sum(traj.total_probes for traj in trajectories)
-                    if probes > baseline_probes:
+                    attempts = attempted_calls(trajectories)
+                    if attempts > baseline_attempts:
                         continue
                     gain = sum(qualities) - sum(baseline_quality)
-                    if probes == baseline_probes and gain <= 1e-9:
+                    if attempts == baseline_attempts and gain <= 1e-9:
                         continue
                     if best_challenger_trajectories is not None:
-                        previous_probes = sum(
-                            traj.total_probes for traj in best_challenger_trajectories
-                        )
+                        previous_attempts = attempted_calls(best_challenger_trajectories)
                         previous_quality = sum(best_challenger_qualities or ())
-                        if (probes, -sum(qualities)) >= (
-                            previous_probes,
+                        if (attempts, -sum(qualities)) >= (
+                            previous_attempts,
                             -previous_quality,
                         ):
                             continue
@@ -316,6 +364,43 @@ class DefaultMethod:
                     ][: runtime._config.optimizer_variants]
                 await select_challenger(variants)
                 if best_challenger is None or self.force_developer:
+                    # Cheap candidates were already checked. If even the
+                    # optimistic path-length bound offers no replay gain,
+                    # source generation cannot pass the training comparison.
+                    from dreamrsi.replay import StrictReplay
+                    from dreamrsi.validation import HoldoutPipeline
+
+                    no_replay_headroom = (
+                        not self.force_developer
+                        and not self.online
+                        and type(runtime._get_replay()) is StrictReplay
+                        and (
+                            runtime.validation is None
+                            or type(runtime.validation) is HoldoutPipeline
+                        )
+                        and not any(
+                            self._has_replay_opportunity(
+                                world,
+                                trajectory,
+                                getattr(runtime.validation, "quality_metric", None),
+                                quality,
+                            )
+                            for world, trajectory, quality in zip(
+                                runtime._worlds,
+                                incumbent_trajectories,
+                                incumbent_quality,
+                                strict=True,
+                            )
+                        )
+                    )
+                    if no_replay_headroom:
+                        await runtime._emit(
+                            EventType.DREAM_COMPLETED,
+                            data={"round": t, "reason": "no_replay_headroom"},
+                        )
+                        if self.campaign_id:
+                            await checkpoints.save(runtime, campaign_id, task, t)
+                        continue
                     session_options = (
                         {"session_id": f"{campaign_id}:round:{t}"}
                         if getattr(optimizer, "supports_sessions", False)
@@ -366,6 +451,10 @@ class DefaultMethod:
                             "world_id": world.world_id,
                             "raw_quality": raw_quality(trajectory),
                             "probes": trajectory.total_probes,
+                            "attempted_expansions": max(
+                                trajectory.total_probes,
+                                sum(len(step.batch) for step in trajectory.steps),
+                            ),
                         }
                         for role, trajectories in (
                             ("incumbent", incumbent_trajectories),

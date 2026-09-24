@@ -91,6 +91,10 @@ class StrictReplay:
         Maximum decision rounds (K₂ in the paper). Default 1000.
     max_parallelism : int
         Maximum batch size (W workers). Default 32.
+    score_cost : str
+        ``"revealed"`` preserves the paper-style replay score. ``"attempted"``
+        also penalizes selected nodes without a recorded continuation, which can
+        still consume a model call when the policy is deployed live.
     budget : Budget, optional
         Logical rollout limits: revealed probes, nodes, depth, workers and rounds.
         Model/evaluator calls each count one per revealed probe. Provider billing
@@ -104,6 +108,7 @@ class StrictReplay:
         beta1: float = 0.01,
         beta2: float = 0.005,
         budget: Budget | None = None,
+        score_cost: str = "revealed",
     ) -> None:
         if not isinstance(max_rounds, int) or isinstance(max_rounds, bool) or max_rounds < 0:
             raise ValueError("max_rounds must be a nonnegative integer")
@@ -115,7 +120,10 @@ class StrictReplay:
             raise ValueError("max_parallelism must be a positive integer")
         if any(not math.isfinite(v) or v < 0 for v in (beta1, beta2)):
             raise ValueError("Replay coefficients must be finite and nonnegative")
+        if score_cost not in ("revealed", "attempted"):
+            raise ValueError("score_cost must be 'revealed' or 'attempted'")
         self.beta1, self.beta2 = beta1, beta2
+        self.score_cost = score_cost
         self.max_rounds = max_rounds
         self.max_parallelism = max_parallelism
         self.budget = budget or Budget()
@@ -126,13 +134,17 @@ class StrictReplay:
 
     def checkpoint_config(self):
         """JSON configuration identifying replay semantics for campaign recovery."""
-        return {
+        settings = {
             "max_rounds": self.max_rounds,
             "max_parallelism": self.max_parallelism,
             "beta1": self.beta1,
             "beta2": self.beta2,
             "budget": self.budget.to_dict(),
         }
+        # Keep existing campaigns resumable under the unchanged default mode.
+        if self.score_cost != "revealed":
+            settings["score_cost"] = self.score_cost
+        return settings
 
     async def replay(
         self,
@@ -175,6 +187,7 @@ class StrictReplay:
         root = tree.get_node(tree.root_id)
         best_score: float | None = root.score if root else None
         probes = 0
+        attempted = 0
         last_round = None
 
         all_ids = world.all_node_ids()
@@ -182,7 +195,7 @@ class StrictReplay:
         if self.budget.max_rounds is not None:
             round_limit = min(round_limit, self.budget.max_rounds)
         for round_num in range(1, round_limit + 1):
-            if revealed >= all_ids:
+            if revealed >= all_ids and self.score_cost == "revealed":
                 trajectory.completed = True
                 break
             # Build the policy view from revealed nodes
@@ -190,7 +203,7 @@ class StrictReplay:
                 tree=tree,
                 revealed=revealed,
                 best_score=best_score,
-                probes=probes,
+                probes=attempted if self.score_cost == "attempted" else probes,
                 round_num=round_num,
                 world=world,
             )
@@ -199,8 +212,8 @@ class StrictReplay:
                 max_rounds=round_limit,
                 max_parallelism=self._workers(),
             ).remaining(Budget(
-                model_calls=probes,
-                evaluator_calls=probes,
+                model_calls=attempted if self.score_cost == "attempted" else probes,
+                evaluator_calls=attempted if self.score_cost == "attempted" else probes,
                 max_nodes=len(revealed),
                 max_rounds=round_num - 1,
             ))
@@ -251,6 +264,7 @@ class StrictReplay:
                 frontier=[n.to_dict() for n in view.frontier],
             )
             trajectory.steps.append(step)
+            attempted += len(batch)
             last_round = {
                 "batch": list(batch),
                 "revealed_nodes": list(revealed_this_round),
@@ -260,12 +274,13 @@ class StrictReplay:
             trajectory.revealed_node_ids.extend(revealed_this_round)
 
             # Check if all nodes revealed
-            if revealed >= all_ids:
+            if revealed >= all_ids and self.score_cost == "revealed":
                 trajectory.completed = True
                 break
 
         trajectory.best_score = best_score
         trajectory.total_probes = probes
+        attempted = max(probes, attempted)
         trajectory.total_rounds = len(trajectory.steps)
         trajectory.elapsed_ms = (time.monotonic() - t0) * 1000
 
@@ -278,19 +293,29 @@ class StrictReplay:
             rounds=len(trajectory.steps),
             beta1=self.beta1,
             beta2=self.beta2,
+            charged_probes=attempted if self.score_cost == "attempted" else probes,
         )
         trajectory.objective = {
-            "formula": "best_score - beta1 * probes + beta2 * probes / max(1, rounds)",
+            "formula": "best_score - beta1 * charged_probes + beta2 * probes / max(1, rounds)",
             "direction": "maximize",
             "beta1": self.beta1,
             "beta2": self.beta2,
+            "score_cost": self.score_cost,
+            "attempted_expansions": attempted,
+            "charged_probes": attempted if self.score_cost == "attempted" else probes,
             "quality": best_score,
-            "probe_penalty": self.beta1 * probes,
+            "probe_penalty": self.beta1 * (
+                attempted if self.score_cost == "attempted" else probes
+            ),
             "parallelism_bonus": self.beta2 * probes / max(1, len(trajectory.steps)),
             "max_rounds": round_limit,
             "max_parallelism": self._workers(),
             "budget": self.budget.to_dict(),
-            "budget_accounting": "one logical model/evaluator call per revealed probe",
+            "budget_accounting": (
+                "one logical model/evaluator call per attempted expansion"
+                if self.score_cost == "attempted"
+                else "one logical model/evaluator call per revealed probe"
+            ),
         }
 
         return trajectory
@@ -349,6 +374,7 @@ class StrictReplay:
         rounds: int,
         beta1: float = 0.01,
         beta2: float = 0.005,
+        charged_probes: int | None = None,
     ) -> float | None:
         """Compute the replay objective from the paper.
 
@@ -358,16 +384,16 @@ class StrictReplay:
         - max_score = best score attained during replay
         - N = number of revealed non-root nodes (probes)
         - K = number of decision rounds
-        - β₁ penalizes total attempts
+        - β₁ penalizes revealed probes by default, or attempted expansions
+          when the caller selects live-call scoring
         - β₂ rewards parallelism (higher probes per round = better batching)
         """
         if best_score is None:
             return None
-        if probes == 0:
-            return best_score
-
+        if charged_probes is None:
+            charged_probes = probes
         parallelism_bonus = (probes / max(rounds, 1)) if rounds > 0 else 0.0
-        return best_score - beta1 * probes + beta2 * parallelism_bonus
+        return best_score - beta1 * charged_probes + beta2 * parallelism_bonus
 
 
 __all__ = [

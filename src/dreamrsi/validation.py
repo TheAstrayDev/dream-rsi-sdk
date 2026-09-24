@@ -168,6 +168,10 @@ class HoldoutPipeline:
                         best_score=trajectory.best_score,
                         raw_quality=raw_quality,
                         probes=trajectory.total_probes,
+                        attempted_expansions=max(
+                            trajectory.total_probes,
+                            sum(len(step.batch) for step in trajectory.steps),
+                        ),
                         rounds=trajectory.total_rounds,
                     )
                     if raw_quality is None:

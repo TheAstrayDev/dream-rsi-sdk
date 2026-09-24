@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0a1 — 2026-09-24
+
+- Add opt-in durable `AdaptivePolicyMemory` so a saved champion can be tried on
+  related tasks before running another training campaign; admission and fallback
+  remain configurable.
+- Count replay attempts at the edge of a recorded tree conservatively and make
+  source-development feedback explain unsupported expansions and repeated actions.
+- Publish two clearly separated experiment records: a local Bonsai Q2 policy
+  developer on a deterministic discovery fixture, and a GPT-6 Luna xhigh
+  model-agent run. Include preparation in every all-in comparison.
+
+The jump to `0.2.0a1` marks a larger, still experimental policy-reuse and
+measurement interface with changed replay semantics; it does **not** claim a
+general research reproduction or an all-in LLM-agent cost win. Both reports
+describe their limits, and alpha APIs may still change.
+
 ## 0.1.0a4 — 2026-09-23
 
 - Reuse recorded search trees for an offline improvement pass with no new training run.

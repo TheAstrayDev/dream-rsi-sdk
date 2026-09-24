@@ -131,10 +131,11 @@ class RawQualityGate:
 
 
 class CostQualityGate:
-    """Promote only a quality-safe policy with fewer probes or better quality.
+    """Promote only a quality-safe policy with fewer attempts or better quality.
 
     Paired validation reports take precedence over training reports. A failed
     or exhausted validation batch cannot be bypassed with training evidence.
+    Older reports without attempted_expansions retain their probe semantics.
     """
 
     def __init__(self, min_quality_improvement: float = 0.0):
@@ -173,6 +174,7 @@ class CostQualityGate:
                     else record.get("best_score")
                 )
                 probes = record.get("probes")
+                attempts = record.get("attempted_expansions", probes)
                 if (
                     not isinstance(role, str)
                     or role not in paired
@@ -185,10 +187,13 @@ class CostQualityGate:
                     or isinstance(probes, bool)
                     or not isinstance(probes, int)
                     or probes < 0
+                    or isinstance(attempts, bool)
+                    or not isinstance(attempts, int)
+                    or attempts < probes
                 ):
                     valid = False
                     break
-                paired[role][world_id] = (float(quality), probes)
+                paired[role][world_id] = (float(quality), attempts)
         world_ids = set(paired["incumbent"])
         if expected is not None and (
             not isinstance(expected, list)
@@ -200,7 +205,7 @@ class CostQualityGate:
         valid = valid and bool(world_ids) and world_ids == set(paired["challenger"])
 
         outcome = PromotionOutcome.INSUFFICIENT_EVIDENCE
-        reason = "Complete paired raw quality and probe counts are required"
+        reason = "Complete paired raw quality and attempt counts are required"
         if valid:
             degraded = next(
                 (
@@ -211,8 +216,8 @@ class CostQualityGate:
                 ),
                 None,
             )
-            incumbent_probes = sum(value[1] for value in paired["incumbent"].values())
-            challenger_probes = sum(value[1] for value in paired["challenger"].values())
+            incumbent_attempts = sum(value[1] for value in paired["incumbent"].values())
+            challenger_attempts = sum(value[1] for value in paired["challenger"].values())
             mean_quality_gain = sum(
                 paired["challenger"][world_id][0]
                 - paired["incumbent"][world_id][0]
@@ -221,18 +226,18 @@ class CostQualityGate:
             if degraded is not None:
                 outcome = PromotionOutcome.REJECTED
                 reason = f"Raw quality declined on world {degraded}"
-            elif challenger_probes < incumbent_probes or (
-                challenger_probes == incumbent_probes
+            elif challenger_attempts < incumbent_attempts or (
+                challenger_attempts == incumbent_attempts
                 and mean_quality_gain > self._min_quality_improvement
             ):
                 outcome = PromotionOutcome.PROMOTED
                 reason = (
-                    f"Probes {incumbent_probes} -> {challenger_probes}; "
+                    f"Attempts {incumbent_attempts} -> {challenger_attempts}; "
                     f"raw quality nondecreasing on {len(world_ids)} worlds"
                 )
             else:
                 outcome = PromotionOutcome.REJECTED
-                reason = "No strict probe saving or quality gain at the same probe count"
+                reason = "No strict attempt saving or quality gain at the same attempt count"
 
         return PromotionDecision(
             incumbent_id=incumbent.id,

@@ -4,7 +4,7 @@ import pytest
 
 from dreamrsi import Budget, DreamRSI
 from dreamrsi.artifacts import PolicyArtifact, SourcePolicy
-from dreamrsi.developer import LLMPolicyDeveloper
+from dreamrsi.developer import LLMPolicyDeveloper, _revision
 from dreamrsi.errors import PolicyError, SandboxError
 from dreamrsi.models.policy import PolicyView
 from dreamrsi.sandbox import PolicySandbox
@@ -21,6 +21,11 @@ REFINE = """def decide(view):
 """
 
 
+@pytest.mark.parametrize("response", ["python\n" + STOP, "```python\n" + STOP + "\n```"])
+def test_developer_accepts_language_tagged_python(response):
+    assert _revision(response)[0] == STOP
+
+
 def view():
     return PolicyView([], None, 0, 0, 0, 0)
 
@@ -34,6 +39,16 @@ async def test_policy_language_and_artifact_integrity():
         PolicyArtifact.from_dict(changed)
     policy = SourcePolicy(artifact, PolicySandbox())
     assert (await copy.deepcopy(policy).decide(view())).stop
+
+
+async def test_sandbox_explains_null_dictionary_key_for_repair_feedback():
+    source = """def decide(view):
+    counts = {}
+    counts[None] = 1
+    return {"expand": []}
+"""
+    with pytest.raises(SandboxError, match="None/null.*parent IDs"):
+        await PolicySandbox().execute(source, view())
 
 
 @pytest.mark.parametrize(
@@ -76,6 +91,11 @@ async def test_rewrite_uses_real_replay_feedback_and_recovers_from_bad_source():
     result = await rsi.improve(10, rounds=1)
     assert len(developer.history) == 2
     assert "error" in requests[1]["feedback"]
+    assert "string node IDs, never node dictionaries" in requests[0]["instruction"]
+    assert "may need to expand it more than once" in requests[0]["instruction"]
+    assert requests[0]["promotion_target"]["incumbent_attempted_expansions"] >= 1
+    assert requests[0]["promotion_target"]["online_model_calls_per_run"] == 3
+    assert "Change the failing code" in requests[1]["revision_goal"]
     assert (
         developer.history[1]["artifact"]["parent_hash"]
         == developer.history[0]["artifact"]["source_hash"]
@@ -197,6 +217,40 @@ async def test_structured_revisions_recover_best_source_with_regression_feedback
     )
     assert developer.history[2]["feedback"]["summary"]["mean_score"] == 3
     assert developer.history[0]["diagnosis"] == "measured comparison"
+
+
+@pytest.mark.parametrize("first_attempts", [1, 2])
+async def test_developer_names_attempted_expansion_target_in_next_revision(first_attempts):
+    from dreamrsi.models.replay import ReplayTrajectory
+
+    requests = []
+    attempts = iter([first_attempts, 1])
+
+    async def model(request):
+        requests.append(copy.deepcopy(request))
+        return STOP + f"\n# revision {len(requests)}"
+
+    async def evaluate(candidate):
+        await candidate.decide(view())
+        return [
+            ReplayTrajectory(
+                "training", "candidate", total_probes=next(attempts),
+                replay_score=1.0, best_score=1.0,
+            )
+        ]
+
+    developer = LLMPolicyDeveloper(model, revisions=2)
+    initial = SourcePolicy(PolicyArtifact(STOP), PolicySandbox())
+    baseline = ReplayTrajectory(
+        "training", "initial", total_probes=1, replay_score=1.0, best_score=1.0
+    )
+    await developer.develop(initial, [baseline], evaluate)
+    assert f"attempted {first_attempts} expansions versus the incumbent's 1" in requests[1][
+        "revision_goal"
+    ]
+    assert requests[1]["feedback"]["comparison"]["attempted_expansions_vs_baseline"] == {
+        "baseline": 1, "candidate": first_attempts,
+    }
 
 
 def test_source_codec_preserves_deadline_and_checks_sandbox_profile():

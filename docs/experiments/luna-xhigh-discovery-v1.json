@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "experiment": "exploratory-discovery-v1",
+  "created_at_utc": "2026-09-23T04:13:24.022747+00:00",
+  "model": "gpt-6-luna",
+  "backend": "codex-app-server",
+  "reasoning_effort": "xhigh",
+  "speed_tier": "fast",
+  "test_seeds_per_category": [
+    101,
+    107
+  ],
+  "preparation": {
+    "training_validation_model_calls": 70,
+    "developer_model_calls": 24
+  },
+  "heldout": {
+    "baseline_model_calls": 24,
+    "dream_model_calls": 6,
+    "baseline_mean_score_pct": 72.607,
+    "dream_mean_score_pct": 72.293
+  },
+  "categories": [
+    {
+      "name": "low_autocorrelation",
+      "test_tasks": 2,
+      "baseline_calls": 8,
+      "dream_calls": 2,
+      "baseline_mean_score_pct": 33.333,
+      "dream_mean_score_pct": 33.333,
+      "training_validation_calls": 23,
+      "developer_calls": 8,
+      "selected_source_history_entry": 2,
+      "policy_promotions": 1
+    },
+    {
+      "name": "circle_packing",
+      "test_tasks": 2,
+      "baseline_calls": 8,
+      "dream_calls": 2,
+      "baseline_mean_score_pct": 85.496,
+      "dream_mean_score_pct": 85.496,
+      "training_validation_calls": 23,
+      "developer_calls": 8,
+      "selected_source_history_entry": 1,
+      "policy_promotions": 1
+    },
+    {
+      "name": "lasso_tuning",
+      "test_tasks": 2,
+      "baseline_calls": 8,
+      "dream_calls": 2,
+      "baseline_mean_score_pct": 98.992,
+      "dream_mean_score_pct": 98.05,
+      "training_validation_calls": 24,
+      "developer_calls": 8,
+      "selected_source_history_entry": 3,
+      "policy_promotions": 2
+    }
+  ],
+  "accounting_note": "Model requests, including all training, validation, source development and test deployment; replay makes no new model requests. Tokens and USD were not available.",
+  "interpretation_note": "Exploratory v1 task scores are task-specific proxies. Lasso score includes an update-count penalty. Codex generation is stochastic and not seed-controlled."
+}

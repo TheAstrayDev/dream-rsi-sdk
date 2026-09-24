@@ -2,6 +2,9 @@
 
 This SDK follows the phase separation in [Dream-RSI section 3 and appendix B.2](https://arxiv.org/html/2609.14858v1): keep the discovery agent and task evaluator fixed, record outcomes, revise executable exploration policies on replay feedback, and deploy a selected policy for further collection. It does not reproduce the published experiment results.
 
+For measured model-backed runs, see the published [GPT-6 Luna experiment](experiments/luna-xhigh-discovery-v1.md)
+and the controlled [Bonsai Q2 policy-development experiment](experiments/ternary-bonsai-diverse-2026-09-24.md).
+
 ## Shared policy limits
 
 The default runtime replay now uses the online worker capacity (`Budget.max_parallelism`,
@@ -54,7 +57,9 @@ The callback above is a plumbing example, not an actual LLM. Use `LLMPolicyDevel
 
 Each revision receives previous source and measured training trajectories (including revealed observations), or the preceding revision's error. All successful revisions are compared with the incumbent on the same training pool. Syntax/execution failures produce feedback and do not replace the incumbent. `developer.history` keeps source artifacts, parent hashes, provenance and results. Named campaigns journal this history to the store.
 
-`DeveloperConfig(response_format="python")` requests a complete source program; `"json"` requests `{source, diagnosis, changes}`. Both paths execute model-written source through the same interpreter. Feedback includes the baseline trajectories, candidate measurements, objective coefficients and score components, legal frontiers at each decision, and source-line errors. Repeated identical replay rounds are compressed with their repetition count; truncation is explicit. A failed revision has no score, even when earlier successful trajectories remain available as diagnostic context.
+`DeveloperConfig(response_format="python")` requests a complete source program; `"json"` requests `{source, diagnosis, changes}`. Both paths execute model-written source through the same interpreter. Feedback includes the baseline trajectories, candidate measurements, objective coefficients and score components, legal frontiers at each decision, and source-line errors. Repeated identical replay rounds are compressed with their repetition count. If `max_feedback_chars` cannot fit full observations, feedback retains a compact decision trace (selected node depth/score/child count, revealed depth/score, and resulting best score) before dropping world details; truncation is explicit. A failed revision has no score, even when earlier successful trajectories remain available as diagnostic context.
+
+Replay may reach the boundary of a recorded tree: selecting a node without a recorded next child consumes a decision round but reveals no probe. When the default method compares call savings, it conservatively counts these attempted expansions as possible live calls. A replay score improved solely by missing continuations is therefore not evidence of cheaper deployment.
 
 Revision records distinguish generation, received output, replay failure, unscored output and successfully scored code. They retain the raw model response and hashes of source, parsed structure and replay decisions. Different source hashes alone do not establish a changed algorithm. Automatically promoted versions retain their per-world replay scores and the promotion decision referencing the same saved version IDs.
 
@@ -124,6 +129,20 @@ train, validation = split_tasks([1, 2, 3, 4, 5], validation_count=2, seed=7)
 ```
 
 The pipeline collects its own worlds using the fixed initial collector policy before development. Exact task overlap is rejected. The caller must ensure tasks are semantically independent: a JSON split cannot detect near duplicates or shared data leakage. The developer sees training feedback only. The selected training winner and incumbent are checked on the same fresh held-out batch; each batch is consumed once, including on execution failure. Exhausted validation means insufficient evidence and prevents default promotion. The default gate becomes `HoldoutGate` when a pipeline is supplied.
+
+For a quality guard, combine replay improvement with the raw best score on **every** held-out world:
+
+```python
+from dreamrsi.promotion import CompositeGate, HoldoutGate, RawQualityGate
+
+promotion = CompositeGate([
+    HoldoutGate(min_improvement=0.0),
+    RawQualityGate(tolerance=1e-8),
+])
+# Pass promotion=promotion and validation=HoldoutPipeline(...) to DreamRSI.
+```
+
+`RawQualityGate` reads paired per-world `best_score` values from validation reports. It rejects a challenger that loses more than the tolerance on any recorded validation world, and treats missing or invalid reports as insufficient evidence. This does not guarantee results on new stochastic runs. The earlier [Luna experiment](experiments/luna-xhigh-discovery-v1.md) shows why call savings and reported quality must be read separately.
 
 Consumption is journaled before validation replay in a named campaign, so a crash cannot make the batch fresh again. More held-out tasks allow more promotion checks. Finite holdout evidence is not proof of generalization; report sample size and online follow-up results. `ReplayOnlyGate` remains available for experiments explicitly using training replay alone.
 

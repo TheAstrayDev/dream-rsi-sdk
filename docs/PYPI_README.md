@@ -6,12 +6,12 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.1.0a4**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a1**.
 
 ## Install
 
 ```bash
-python -m pip install dreamrsi==0.1.0a4
+python -m pip install dreamrsi==0.2.0a1
 ```
 
 ```python
@@ -29,26 +29,33 @@ print(result.best)  # HELLO
 This example demonstrates integration, not quality improvement. Stateful adapters support
 generate/evaluate/refine tasks. Replay uses recorded outcomes without new discovery calls.
 `LLMPolicyDeveloper` writes and iteratively rewrites executable source from measured feedback.
-Version 0.1.0a4 can replay already recorded runs without a new training call, delays
-holdout collection until a replay-improving candidate exists, and stops repeated policy
-revisions. The default promotion gate now requires paired raw-quality and probe evidence;
-applications needing score-only decisions can explicitly use `ReplayOnlyGate`.
-These changes reduce avoidable calls, but an end-to-end cost advantage has not been proven.
+Version 0.2.0a1 adds opt-in persistent champion reuse and more conservative replay
+cost accounting. It can replay already recorded runs without a new training call,
+delays holdout collection until a replay-improving candidate exists, and stops
+repeated policy revisions. The default promotion gate requires paired raw-quality
+and probe evidence; applications needing score-only decisions can explicitly use
+`ReplayOnlyGate`. An end-to-end cost advantage for an LLM discovery agent has
+not been proven.
 The SDK includes configurable Docker-free policy interpreters, optional process execution,
 held-out validation, SQLite recovery and reported token/USD accounting.
 
-## Tested with Bonsai-27B-Q1_0
+## Two measured experiments
 
-![Measured Bonsai policy development](https://raw.githubusercontent.com/TheAstrayDev/dream-rsi-sdk/main/assets/bonsai-development-v4.png)
+In the [Bonsai Q2 experiment](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/experiments/ternary-bonsai-diverse-2026-09-24.md),
+a real local model wrote executable policy code while a deterministic agent solved
+the tasks. Across 64 fresh fixture tasks, counted operations fell from 256 to 248
+with raw quality 0.9 throughout. This is a logical-operation proxy, not a measured
+token or dollar saving for an LLM agent.
 
-A local llama.cpp follow-up scored 5/6 revisions, repaired stopping from 1,000 to 4
-replay rounds, promoted a policy and reloaded it for a fresh toy run. Residual error
-decreased from 1.5 to 0.1875 at six agent calls per policy. This is limited mechanics
-evidence, not a broad AI benchmark or a reproduction of the paper's performance.
-Earlier failures and all run denominators remain in the public reports.
+In the [GPT-6 Luna xhigh experiment](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/experiments/luna-xhigh-discovery-v1.md),
+the real model both solved tasks and developed policies. Deployment fell from
+24 to six model requests across six held-out tasks, but 94 preparation requests
+made the full path **100 versus 24**. Mean reported score was slightly lower.
+This demonstrates learning and reuse, not an all-in economic win.
 
 - [Full documentation and roadmap](https://github.com/TheAstrayDev/dream-rsi-sdk#readme)
-- [Real-model evidence](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/experiments/sandbox-v4-2026-09-22.md)
+- [Bonsai Q2 experiment](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/experiments/ternary-bonsai-diverse-2026-09-24.md)
+- [GPT-6 Luna experiment](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/experiments/luna-xhigh-discovery-v1.md)
 - [Integration and recovery](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/research-loop.md)
 - [Sandbox configuration](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/sandbox.md)
 - [Issues](https://github.com/TheAstrayDev/dream-rsi-sdk/issues)

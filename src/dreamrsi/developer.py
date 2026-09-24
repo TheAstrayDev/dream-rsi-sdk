@@ -70,6 +70,10 @@ def _revision(response):
             text = text[delimiters[-1].end() :].strip()
         if text.startswith("```") and text.endswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        # Some endpoint adapters remove the Markdown fence but leave its
+        # language label as the first line of otherwise valid Python source.
+        if text.partition("\n")[0].strip().lower() == "python" and "def decide(" in text:
+            text = text.partition("\n")[2].strip()
         if text.startswith("{"):
             response = json.loads(text)
         else:
@@ -136,6 +140,15 @@ class LLMPolicyDeveloper:
                 "all_worlds_scored": complete,
                 "mean_score": sum(scores) / len(scores) if complete else None,
                 "total_probes": sum(t.total_probes for t in trajectories),
+                "attempted_expansions": sum(
+                    max(t.total_probes, sum(len(step.batch) for step in t.steps))
+                    for t in trajectories
+                ),
+                "unsupported_expansions": sum(
+                    max(0, len(step.batch) - len(step.revealed_nodes))
+                    for t in trajectories
+                    for step in t.steps
+                ),
                 "total_rounds": sum(t.total_rounds for t in trajectories),
                 "empty_rounds": sum(
                     not step.revealed_nodes for t in trajectories for step in t.steps
@@ -174,6 +187,35 @@ class LLMPolicyDeveloper:
                 if len(compact_steps) > limit and limit > 1
                 else compact_steps[:limit]
             )
+            observations = item["observations"]
+            decision_trace = [
+                {
+                    "round": step["round_number"],
+                    "selected": [
+                        {
+                            key: node[key]
+                            for key in ("depth", "score", "children_count")
+                            if key in node
+                        }
+                        for node_id in step["batch"]
+                        for node in step["frontier"]
+                        if node["id"] == node_id
+                    ],
+                    "revealed": [
+                        {
+                            key: observations[node_id][key]
+                            for key in ("depth", "score")
+                            if key in observations[node_id]
+                        }
+                        for node_id in step["revealed_nodes"]
+                        if node_id in observations
+                    ],
+                    "best_score": step["best_score_so_far"],
+                    "repeated_rounds": step["repeated_rounds"],
+                }
+                for step in item["steps"]
+            ]
+            item = {"decision_trace": decision_trace, **item}
             data["trajectories"].append(item)
 
         def length():
@@ -183,11 +225,17 @@ class LLMPolicyDeveloper:
             for item in data["trajectories"]:
                 item["observations"] = {}
                 item["observations_truncated"] = True
-        if length() > self.config.max_feedback_chars:
-            for item in data["trajectories"]:
                 item["steps"] = []
                 item["revealed_node_ids"] = []
                 item["steps_truncated"] = True
+                if isinstance(item.get("objective"), dict):
+                    item["objective"].pop("budget", None)
+        if length() > self.config.max_feedback_chars:
+            for item in data["trajectories"]:
+                trace = item.get("decision_trace", [])
+                if len(trace) > 2:
+                    item["decision_trace"] = [trace[0], trace[-1]]
+                    item["decision_trace_truncated"] = True
         while length() > self.config.max_feedback_chars and data["trajectories"]:
             data["trajectories"].pop()
             data["world_details_truncated"] = True
@@ -282,12 +330,35 @@ class LLMPolicyDeveloper:
             if feedback.get("error"):
                 revision_goal = (
                     "Repair the reported source error; preserve the intended algorithm. "
-                    "Return the entire corrected program."
+                    "Change the failing code before returning the entire corrected program; "
+                    "an unchanged response cannot repair the error."
                 )
-            elif feedback.get("summary", {}).get("empty_rounds", 0):
+            elif feedback.get("comparison", {}).get("identical_decisions_to_prior_revision"):
                 revision_goal = (
-                    f"Replay recorded {feedback['summary']['empty_rounds']} empty rounds. "
-                    "Diagnose repeated decisions with no newly revealed evidence. "
+                    "Your last source made the same replay decisions as the prior revision. "
+                    "Rewrite the executable branching or stopping logic so observed actions "
+                    "change; edits to comments, names, or parallelism alone are insufficient. "
+                    "Preserve raw quality while reducing attempted expansions."
+                )
+            elif (
+                feedback.get("summary", {}).get("attempted_expansions") is not None
+                and feedback["summary"]["attempted_expansions"]
+                >= baseline_feedback["summary"]["attempted_expansions"]
+            ):
+                revision_goal = (
+                    f"Your last policy attempted {feedback['summary']['attempted_expansions']} "
+                    "expansions versus the incumbent's "
+                    f"{baseline_feedback['summary']['attempted_expansions']}. "
+                    "Without a raw-quality gain, this cannot qualify. A replay boundary "
+                    "still costs a live call. Reduce batch sizes or stop after sufficient "
+                    "observed quality; preserve raw quality on every world. "
+                    "Rewrite the actions, not comments or coefficients."
+                )
+            elif feedback.get("summary", {}).get("unsupported_expansions", 0):
+                revision_goal = (
+                    f"Replay recorded {feedback['summary']['unsupported_expansions']} "
+                    "expansions without a recorded continuation. These are not proven "
+                    "live-call savings. Diagnose those choices using the decision trace. "
                     "Use the last_round observation to redesign stopping or recovery logic, "
                     "while preserving attained quality. "
                     "Do not merely change comments or constants."
@@ -302,7 +373,9 @@ class LLMPolicyDeveloper:
                 )
             else:
                 revision_goal = (
-                    "Develop a complete policy from the baseline source and trajectories."
+                    "Develop a complete policy from the baseline source and trajectories. "
+                    "Change at least one branching or stopping decision on the recorded "
+                    "worlds; a source rewrite with identical actions cannot save calls."
                 )
             response_instruction = (
                 "Return JSON {diagnosis: string, changes: string, source: string}. "
@@ -326,26 +399,53 @@ class LLMPolicyDeveloper:
                     "view and its nodes are DICTIONARIES: "
                     "use view['frontier'], NOT view.frontier. "
                     "Return a DICTIONARY, e.g. {'expand': [node['id']], 'stop': False}. "
+                    "The expand list MUST contain string node IDs, never node dictionaries: "
+                    "use [node['id'] for node in selected_nodes]. "
+                    "Each UNIQUE ID in expand triggers at most one child/probe. "
+                    "parallelism only schedules different selected IDs concurrently; "
+                    "it never multiplies a single root expansion, and duplicate IDs "
+                    "in one batch are forbidden. To obtain another root child, select "
+                    "the root again in a later round. "
                     "The legal choices are EXACTLY view['frontier']; all are expandable, "
-                    "including COMPLETED nodes. Do not filter them by status/children_count. "
+                    "including COMPLETED nodes. Status and children_count are observations "
+                    "for deciding when to revisit a node, not proof it is illegal. "
                     "At the start only the root exists with score None; "
                     "expand it to get feedback. "
-                    "The root stays unscored forever: expanding it starts a NEW attempt; "
+                    "The root stays unscored forever: expanding it starts a NEW attempt, "
+                    "so a policy may need to expand it more than once to compare branches; "
                     "expanding a non-root leaf REFINES that leaf's state. "
                     "A null score is not evidence of high quality. "
+                    "When sorting with reverse=True, do not accidentally rank None "
+                    "above numerical scores. "
                     "Replay only reveals recorded children; a missing continuation reveals "
-                    "nothing and consumes a round. Repeated empty rounds are counted. "
+                    "nothing and consumes a round. It can still consume a live model call "
+                    "on a fresh task, so fewer revealed probes alone do not prove savings. "
+                    "Use attempted_expansions and unsupported_expansions in feedback. "
                     "IDs must be unique; parallelism, if provided, must be a positive integer. "
                     "Node scores can be null (especially the root); handle null before ranking. "
                     "Use only revealed observations/history. No files, network, environment, "
                     "subprocesses or hidden outcomes. Each decision starts fresh; history is in "
                     "view['history']. Improve measured replay quality/work/parallelism. "
-                    "Failed revisions should be diagnosed and corrected from feedback."
-                    " Optimize the measured mean replay score, not just the raw best score. "
+                    "Failed revisions should be diagnosed and corrected from feedback. "
+                    "Promotion first requires no raw-quality loss on any training world, "
+                    "then fewer attempted expansions or a strict quality gain at equal cost. "
+                    "The mean replay score is a search diagnostic, not the promotion rule. "
+                    "Merely shortening a replay by choosing unsupported boundaries "
+                    "cannot qualify. "
+                    "The promotion_target field gives the incumbent's measured attempted "
+                    "expansions. Select only as many IDs as the remaining budget permits; "
+                    "a batch with extra IDs is charged even when replay has no recorded "
+                    "continuation for them. "
+                    "Read each decision_trace as selected nodes, then revealed scores, "
+                    "then the resulting best score; use differences between worlds "
+                    "to choose a conditional branching and stopping rule. "
                     "Use trajectories to identify wasted probes, premature stops, missed "
                     "refinement and serial batches. Make a concrete algorithmic change when "
                     "progress stalls; explain the evidence and expected effect. Never embed "
                     "recorded node IDs, task answers or absolute target scores in the code. "
+                    "Prefer comparisons between observed candidates over numeric score "
+                    "thresholds learned from a few replay worlds; score scales may shift "
+                    "on future tasks. A saved probe is useless if raw quality falls. "
                     "Keep code concise and use finite numeric values only."
                 ),
                 "response_format": self.config.response_format,
@@ -358,6 +458,18 @@ class LLMPolicyDeveloper:
                 "source_aliases": "Null best_source/evaluated_source means identical to source.",
                 "baseline_score": baseline,
                 "best_score": best_score,
+                "promotion_target": {
+                    "incumbent_attempted_expansions": baseline_feedback["summary"][
+                        "attempted_expansions"
+                    ],
+                    "online_model_calls_per_run": (
+                        budget.model_calls if budget is not None else None
+                    ),
+                    "rule": (
+                        "At equal raw quality, use fewer attempted expansions than "
+                        "the incumbent across training worlds."
+                    ),
+                },
                 "policy_timeout_s": self.config.policy_timeout_s,
                 "sandbox": self.sandbox.capabilities()
                 if hasattr(self.sandbox, "capabilities")
@@ -511,6 +623,10 @@ class LLMPolicyDeveloper:
                     else None,
                     "identical_decisions_to_prior_revision": record["duplicate_behavior"],
                     "identical_outcome_to_prior_revision": record["duplicate_outcome"],
+                    "attempted_expansions_vs_baseline": {
+                        "baseline": baseline_feedback["summary"]["attempted_expansions"],
+                        "candidate": feedback["summary"]["attempted_expansions"],
+                    },
                     "quality_delta_vs_baseline": [
                         {
                             "world": actual.world_id,

@@ -51,58 +51,114 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.1.0a4` · APIs may change |
-| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.1.0a4/) · source · GitHub installation |
+| Version | `0.2.0a1` · APIs may change |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
+| Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
 or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
 
-## Tested with a real local model
+## What the experiments actually showed
 
-**Bonsai-27B-Q1_0, running through llama.cpp, wrote and repaired executable policy code
-from replay feedback.** One candidate passed held-out replay, was saved and reloaded,
-then improved a fresh toy refinement run with the discovery agent and evaluator unchanged.
+The two results below test different things. In the Bonsai experiment, a real
+local model **wrote policy code**, while a deterministic Python fixture supplied
+task solutions. In the GPT-6 Luna experiment, the model **both solved the tasks
+and developed policies**. Their call counts must not be pooled or compared as
+if they measured the same resource.
 
-![Bonsai-27B-Q1_0: measured source revisions, replay rounds, and fresh online results](assets/bonsai-development-v4.svg)
+### Bonsai Q2: code generation and reuse on a controlled fixture
 
-| Fresh online task · seed 43 | Balanced baseline | Reloaded generated policy |
+`Ternary-Bonsai-27B-Q2_g64` ran locally through llama.cpp. The experiment fixed
+two training tasks, two separate validation tasks, and 64 fresh tasks before
+policy generation. The SDK recorded the training trees, asked Bonsai to revise
+an executable policy from replay feedback, sandboxed the code, checked it on
+the held-out trees, and reused the accepted source on the fresh tasks. The
+accepted source was the **sixth model response**; the full record charges
+**eight developer request attempts**, including one rejected for context size.
+
+| Across 64 fresh tasks | Fixed policy | Bonsai-written policy path |
 | :--- | ---: | ---: |
-| Agent calls | 6 | 6 |
-| Final absolute state (lower is better) | 1.5000 | 0.1875 |
-| Best evaluator score (higher is better) | -1.5000 | -0.1875 |
+| Preparation, including training, developer and validation | 0 | 24 logical operations |
+| Fresh-task deployment | 256 | 224 logical operations |
+| **Full path** | **256** | **248** |
+| Raw quality on every fresh task | 0.9 | 0.9 |
 
-This is **87.5% less residual error on one synthetic task**, not a speedup or a general
-AI benchmark. The latest follow-up passed every demonstration gate: **5/6 revisions
-scored**, with different executable structures and replay decisions, held-out promotion,
-and reloaded execution. The model repaired a stalled policy from **1,000 to 4 replay
-rounds**, then reduced probes from 5 to 3. See the
-[latest report and raw evidence](docs/experiments/sandbox-v4-2026-09-22.md).
+![Bonsai Q2 on a deterministic branch fixture: 256 versus 248 counted operations at equal quality](assets/ternary-bonsai-diverse-local.png)
 
-The earlier three-seed matrix promoted **1/3 seeds**, with **7/12 revisions scored**;
-its stricter diversity gate did not pass. These are separate configurations, not pooled
-success rates. The [original matrix](docs/experiments/bonsai-2026-09-22.md) remains available.
+This is a **3.125% reduction in the fixture's counted-operation proxy**, with
+preparation included. The eight developer requests were real local model calls;
+the discovery-agent operations were scripted, not LLM requests. The result
+demonstrates policy writing, replay-guided revision, validation and reuse. It
+does not establish a token, dollar or time saving for an LLM discovery agent.
+The policy still uses fixed score thresholds and was tested on a narrow branch
+family. See the [frozen protocol and audit](docs/experiments/ternary-bonsai-diverse-2026-09-24.md).
 
-## What's new in 0.1.0a4
+### GPT-6 Luna xhigh: real model agent, costly preparation
+
+In a separate exploratory v1 run, `gpt-6-luna` with `xhigh` reasoning and the
+Fast tier supplied **both** candidate answers and policy-code revisions. The
+run covered low autocorrelation, circle packing and Lasso tuning, with two
+held-out tasks per category. The SDK accepted a policy in each category. On
+those six tasks, deployment needed **one model answer per task**: **two per
+category**, compared with eight baseline answers per category.
+
+| Category, two test tasks each | Baseline calls | Dream-RSI deployment calls | Mean reported score, baseline → Dream-RSI |
+| :--- | ---: | ---: | ---: |
+| Low autocorrelation | 8 | **2** | 33.333% → 33.333% |
+| Circle packing | 8 | **2** | 85.496% → 85.496% |
+| Lasso tuning | 8 | **2** | 98.992% → 98.050% |
+| **Six-task total / mean** | **24** | **6** | **72.607% → 72.293%** |
+
+![GPT-6 Luna xhigh: 94 preparation requests and six deployment requests versus 24 baseline requests](assets/luna-xhigh-discovery-v1.png)
+
+The shorter deployments came after **70 training/validation requests and 24
+policy-development requests**. The complete Dream-RSI path therefore cost
+**94 + 6 = 100 model requests**, versus **24** for baseline. Reported mean
+quality was **0.314 percentage points lower**, mainly on Lasso, whose v1 score
+also includes a solver-update penalty. This is evidence that executable
+policies were learned and reused, **not an all-in economic or quality win**.
+The retained run contains eight developer requests per category; the final
+selected sources first appear at history entries 2, 1 and 3 respectively.
+These counts describe this selected run, not a first-try success rate across
+all exploratory attempts. See the [protocol and sanitized data summary](docs/experiments/luna-xhigh-discovery-v1.md).
+
+Replay itself makes no new model requests. The SDK changes the exploration
+policy, not model weights. Neither experiment reproduces the published
+Dream-RSI benchmarks, and neither demonstrates generalization to arbitrary
+agents or task families.
+
+## What's new in 0.2.0a1
+
+This alpha introduces persistent policy reuse through `AdaptivePolicyMemory`,
+improves replay cost accounting at the recorded-tree boundary, and gives the
+source developer clearer feedback about decisions that do not save live calls.
+It also publishes the two experiment records above with preparation costs
+shown explicitly. The `0.2` line marks a broader experimental SDK surface,
+**not** a proven all-in win on an LLM discovery agent.
+
+### Earlier 0.1.0a4 changes
 
 Recorded runs can now feed an offline policy-improvement pass without a new training run.
 Validation worlds are collected only after a candidate improves training replay; the
 default promotion gate compares raw quality and probe count separately. A combined
 agent/developer call cap and early revision stops reduce avoidable work. These changes
-have **not yet proven an end-to-end cost win** on the full benchmark.
+have **not yet proven an end-to-end cost win with an LLM discovery agent**.
 
 The default gate now requires paired quality/probe evidence. If you relied on
 score-only promotion, pass `ReplayOnlyGate` explicitly. Built-in policy variants run
 before the LLM developer; set `DefaultMethod(force_developer=True)` when source
 development must run even after a cheap candidate qualifies.
+For offline improvement with strict replay, the SDK also checks the recorded
+tree before paying for source generation. If even an optimistic path cannot
+improve raw quality or reduce probes, it skips the developer. This is an
+impossibility check on recorded outcomes, not a prediction of unseen tasks.
 
 ## What's new in 0.1.0a3
 
-This release adds the Appendix B grid workflow, bounded source reloads with
-SQLite manifests, replay-capacity accounting, and the corresponding local evidence.
-The full test suite passes (**150 tests**); the three-revision Bonsai follow-up scored
-every revision and kept the incumbent on ties. The published PyPI install is now
-`0.1.0a3`.
+That release added the Appendix B grid workflow, bounded source reloads with
+SQLite manifests, and replay-capacity accounting. The current published alpha
+is listed above.
 
 <a id="quickstart"></a>
 ## Install and try
@@ -110,7 +166,7 @@ every revision and kept the incumbent on ties. The published PyPI install is now
 You need **Python 3.11+**. Install the published alpha in your virtual environment:
 
 ```bash
-python -m pip install dreamrsi==0.1.0a4
+python -m pip install dreamrsi==0.2.0a1
 ```
 
 To run the repository examples or contribute, install from source with Git:
@@ -145,6 +201,12 @@ For the full online/replay loop, run:
 ```bash
 python examples/01_toy_optimization.py
 ```
+
+The published experiment records above describe the controlled
+[Bonsai Q2 policy-development run](docs/experiments/ternary-bonsai-diverse-2026-09-24.md)
+and the [GPT-6 Luna model-agent run](docs/experiments/luna-xhigh-discovery-v1.md).
+Both include their preparation costs and limitations. No benchmark service or model
+credentials are needed for the two repository examples above.
 
 You can also install directly from GitHub:
 
@@ -226,6 +288,92 @@ asyncio.run(main())
 The budget applies to **each online run**: this example permits up to 60 `propose` calls
 across three runs. No promotion is a valid outcome. Inside an existing event loop,
 use `await rsi.run(...)` or `await rsi.improve(...)` directly instead of the sync wrappers.
+
+When you already have a completed run, `await rsi.record_world(task, run_result)`
+adds its tree to replay. Constructing the runtime with `DefaultMethod(online=False)`
+then makes `await rsi.improve(task, rounds=1)` perform one offline improvement pass
+without a fresh training run. The original run's acquisition calls still belong in
+the full campaign cost.
+
+### Reuse a policy on related tasks
+
+`AdaptivePolicyMemory` stores policy versions in SQLite and creates a
+fresh runtime for each task. The deterministic `family_of` function decides
+whether a saved policy applies. After a normal run, `raw_quality` is compared
+with a task-specific floor; only a missing or degraded policy triggers one
+offline improvement pass. If no challenger passes promotion, a successful
+incumbent is still saved for reuse. It is marked `incumbent`, **not** as a
+holdout-validated promotion. Normal-run trees are saved by family and reused
+for later offline replay. No campaign checkpoint is restored.
+
+```python
+from dreamrsi import (
+    AdaptivePolicyMemory, Budget, DefaultMethod, DreamRSI,
+    HoldoutPipeline, PolicyMemorySettings, SQLiteStore,
+)
+from dreamrsi.policies import BalancedPolicy
+
+def build_runtime(task, saved_policy):
+    return DreamRSI(
+        adapter=my_agent_adapter,
+        evaluator=my_evaluator,
+        policy=saved_policy or BalancedPolicy(batch_size=1),
+        policy_optimizer=my_policy_developer,
+        validation=HoldoutPipeline([fresh_independent_holdout(task)]),
+        budget=Budget(model_calls=2, max_nodes=3, max_depth=2),
+        method=DefaultMethod(online=False),
+    )
+
+memory = AdaptivePolicyMemory(
+    store=SQLiteStore("policy-memory.sqlite3"),
+    runtime_factory=build_runtime,
+    family_of=lambda task: task["kind"],
+    raw_quality=lambda task, run: run.best_score,
+    minimum_quality=lambda task: quality_floors[task["kind"]],
+    settings=PolicyMemorySettings(
+        save_worlds=True,
+        reuse_worlds=True,
+        save_policies=True,
+        reuse_policies=True,
+        accept_world=lambda current, recorded, world: (
+            current["kind"] == recorded["kind"] and world.tree.size >= 2
+        ),
+        accept_policy=lambda task, policy, origin, saved_quality: (
+            origin == "promoted"
+            or (saved_quality is not None
+                and saved_quality >= quality_floors[task["kind"]])
+        ),
+    ),
+)
+outcome = await memory.run(task)
+print(outcome.reused_policy, outcome.trained, outcome.promoted, outcome.incumbent_saved)
+```
+
+Choose a family key that includes the task and objective version, and use a
+*raw* quality metric rather than a score that already penalizes work. A saved
+policy is loaded as a new object; old versions are never overwritten. The
+quality check uses the outcome of the ordinary task run, so it adds no model
+request by itself. A saved incumbent has not passed an independent holdout;
+each new task is checked against its quality floor. A new or degraded family may
+still need developer and fresh
+holdout requests; inspect `outcome.result` and `outcome.improvement` for the full
+cost. Supply a new, independent holdout for each improvement attempt; the memory
+reserves its task IDs so an earlier holdout cannot be silently reused. For an
+already validated champion, call `await memory.remember(task, champion,
+origin="promoted")` once.
+The four `PolicyMemorySettings` switches control storage and reuse **across
+tasks** independently; the current run can still use its own accepted tree for
+offline improvement. `accept_world`
+receives the current task, the tree's original task and its `ReplayWorld`;
+`accept_policy` receives the task, policy, origin and saved raw quality. Both
+rules can be async. A rejected historical artifact remains on disk but is not
+reused; a rejected new tree is excluded from replay and storage. Omit either
+rule to accept everything. Pass `task=` to `memory.load(family, task=task)` to
+apply the policy rule to an explicit load.
+Keep acceptance rules deterministic and local when measuring model costs;
+external calls made inside them need their own accounting.
+There is no universal algorithm that recognizes the meaning of arbitrary text:
+the application must provide `family_of` and a comparable raw-quality floor.
 
 <a id="architecture"></a>
 ## How it works
@@ -347,10 +495,10 @@ These are SDK implementations, not reproductions of every research execution det
   reconciled before skipping an interrupted round. State must be JSON-compatible.
 - **Service-specific cancellation.** Adapters confirm remote termination; a cancelled wait
   alone cannot stop a thread or a remote job.
-- **Experimental evidence.** A local model produced a useful policy on a toy task.
-  Robust multi-seed gains, broad generalization and the original benchmarks remain unverified.
-  Earlier candidates reached the replay round cap; the latest model-written policy repaired
-  that behavior on the recorded toy worlds. Robust stopping on other tasks remains unverified.
+- **Experimental evidence.** A local model produced and revised useful policy code.
+  The varied-score fixture saved eight all-in calls across 64 fresh seeds at equal quality,
+  but those seeds encode only two branch-order patterns. Broad multi-task generalization,
+  real discovery-agent economics and the original benchmarks remain unverified.
 
 <a id="roadmap"></a>
 ## Roadmap

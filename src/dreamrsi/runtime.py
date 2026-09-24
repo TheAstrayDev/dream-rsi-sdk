@@ -257,10 +257,22 @@ class DreamRSI:
                 or stored_run.metadata.get("task_key") != fingerprint
             ):
                 raise ConfigurationError("Recorded run does not belong to the supplied task")
-        for world in self._worlds:
-            if world.tree.tree_id == result.tree.tree_id:
-                return world
-        world = ReplayWorld(result.tree)
+        return await self.add_recorded_world(task, ReplayWorld(result.tree))
+
+    async def add_recorded_world(self, task: Any, world: ReplayWorld) -> ReplayWorld:
+        """Import a previously recorded world for offline replay without agent calls."""
+        if self._improving:
+            raise ConfigurationError("Cannot add training worlds during improvement")
+        if not isinstance(world, ReplayWorld) or not world.tree.is_committed:
+            raise ConfigurationError("Training world must be a committed ReplayWorld")
+        if self.validation is not None:
+            from dreamrsi.validation import task_key
+
+            if task_key(task) in {task_key(t) for t in self.validation.tasks}:
+                raise ConfigurationError("Training task overlaps the validation partition")
+        for existing in self._worlds:
+            if existing.tree.tree_id == world.tree.tree_id:
+                return existing
         self._worlds.append(world)
         await self._emit(
             EventType.WORLD_CREATED,

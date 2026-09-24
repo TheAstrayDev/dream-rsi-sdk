@@ -364,8 +364,15 @@ class _Interpreter:
         if kind is list:
             return [self.checked(item, depth + 1) for item in value]
         if kind is dict:
-            if any(type(key) is not str for key in value):
-                raise SandboxError("Only string dictionary keys are allowed")
+            sentinel = object()
+            invalid_key = next((key for key in value if type(key) is not str), sentinel)
+            if invalid_key is not sentinel:
+                detail = (
+                    "None/null (normalize optional parent IDs before using them as keys)"
+                    if invalid_key is None
+                    else type(invalid_key).__name__
+                )
+                raise SandboxError(f"Only string dictionary keys are allowed; got {detail}")
             return {
                 self.checked(k, depth + 1): self.checked(v, depth + 1) for k, v in value.items()
             }

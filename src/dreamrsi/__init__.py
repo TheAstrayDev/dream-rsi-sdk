@@ -45,6 +45,7 @@ from dreamrsi.errors import (
 from dreamrsi.llamacpp import LlamaCppPolicyModel
 from dreamrsi.methods import DefaultMethod
 from dreamrsi.ollama import OllamaPolicyModel
+from dreamrsi.policy_memory import AdaptivePolicyMemory, AdaptiveRun, PolicyMemorySettings
 from dreamrsi.process_sandbox import ProcessPolicySandbox
 from dreamrsi.runtime import (
     Budget,
@@ -58,7 +59,7 @@ from dreamrsi.sandbox import PolicySandbox, SandboxConfig
 from dreamrsi.storage import SQLiteStore
 from dreamrsi.validation import HoldoutPipeline, split_tasks
 
-__version__ = "0.1.0a4"
+__version__ = "0.2.0a1"
 
 __all__ = [
     "Usage",
@@ -76,6 +77,9 @@ __all__ = [
     "HoldoutPipeline",
     "split_tasks",
     "SQLiteStore",
+    "AdaptivePolicyMemory",
+    "PolicyMemorySettings",
+    "AdaptiveRun",
     "CallableAgentAdapter",
     "FunctionalAgentAdapter",
     # Core

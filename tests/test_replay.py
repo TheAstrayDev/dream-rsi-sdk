@@ -39,6 +39,51 @@ async def test_replay_score_coefficients():
     assert result.replay_score == 3
 
 
+async def test_attempted_score_charges_unrecorded_live_call_without_changing_paper_default():
+    class RecordedThenBoundary:
+        async def decide(self, view):
+            return PolicyDecision(expand=[("r", "a", "b")[view.rounds_used]])
+
+    settings = dict(max_rounds=3, max_parallelism=1, beta1=1, beta2=0)
+    paper = await StrictReplay(**settings).replay(world(), RecordedThenBoundary())
+    live_cost = await StrictReplay(**settings, score_cost="attempted").replay(
+        world(), RecordedThenBoundary()
+    )
+    assert paper.total_probes == live_cost.total_probes == 2
+    assert paper.objective["attempted_expansions"] == 3
+    assert paper.replay_score == 1
+    assert live_cost.replay_score == 0
+    assert live_cost.objective["charged_probes"] == 3
+    assert StrictReplay(score_cost="attempted").checkpoint_config()["score_cost"] == "attempted"
+
+
+async def test_attempted_mode_keeps_live_budget_after_recorded_tree_ends():
+    tree = DiscoveryTree("short")
+    tree.create_root(node_id="r")
+    tree.add_node("r", node_id="a", score=1)
+    tree.commit()
+
+    seen_calls = []
+    class KeepExpanding:
+        async def decide(self, view):
+            seen_calls.append(view.calls_used)
+            return PolicyDecision(expand=["r"])
+
+    policy = KeepExpanding()
+    result = await StrictReplay(
+        max_rounds=5,
+        max_parallelism=1,
+        score_cost="attempted",
+        beta1=1,
+        beta2=0,
+        budget=Budget(model_calls=3, evaluator_calls=3, max_parallelism=1),
+    ).replay(ReplayWorld(tree), policy)
+    assert result.total_probes == 1
+    assert result.objective["attempted_expansions"] == 3
+    assert result.replay_score == -2
+    assert seen_calls == [0, 1, 2]
+
+
 async def test_replay_resets_rng_and_state():
     policy = RandomPolicy(seed=8, batch_size=2)
     replay = StrictReplay(max_rounds=5)

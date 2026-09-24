@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dreamrsi"
-version = "0.1.0a4"
+version = "0.2.0a1"
 description = "Independent, unofficial Dream-RSI-inspired Python SDK for exploration-policy replay and search (alpha)."
 readme = "docs/PYPI_README.md"
 license = "Apache-2.0"
