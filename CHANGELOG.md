@@ -17,9 +17,8 @@
 - Keep package listings usable in legacy Windows consoles by escaping characters
   that the terminal encoding cannot represent.
 
-This second alpha in the `0.2` series turns local policy memory into portable,
-community-authored artifacts. It does not change model weights or establish a
-new benchmark result. The package-sharing interface remains experimental.
+Local policy memory can be shared as portable, community-authored artifacts.
+The package-sharing interface remains experimental.
 See the [release walkthrough](docs/releases/0.2.0a2.md) and
 [package guide](docs/packages.md).
 

@@ -7,10 +7,10 @@ has the `dreamrsi-package` topic and a GitHub Release containing one
 GitHub for that topic and sorts by
 stars; stars are the popularity signal, not a quality or safety guarantee.
 
-The commands below are available in the `0.2.0a2` source release:
+Install `0.2.0a2` from PyPI to use the commands below:
 
 ```bash
-python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@v0.2.0a2"
+python -m pip install --upgrade dreamrsi==0.2.0a2
 dreamrsi --help
 ```
 

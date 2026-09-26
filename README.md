@@ -52,7 +52,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Source release | `0.2.0a2` · APIs may change |
+| Version | `0.2.0a2` · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
 | Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
 
@@ -131,10 +131,11 @@ agents or task families.
 
 ## What's new in 0.2.0a2
 
-Third-party developers can now distribute reusable exploration policies and
-recorded replay datasets as portable JSON bundles. The GitHub package CLI provides
-discovery, export, publication and installation; recipients retain control over
-compatibility, quality checks and whether further policy development is allowed.
+Share exploration policies and recorded search experience across projects.
+Version `0.2.0a2` packages policy versions and replay trees into portable JSON
+bundles, with a GitHub CLI workflow for discovery, publication and installation.
+Applications can adopt community-developed packages while retaining their own
+agents, compatibility rules, quality checks and control over further development.
 See the [release walkthrough](docs/releases/0.2.0a2.md) for the workflow diagram,
 a complete recipient example and compatibility limits.
 
@@ -173,14 +174,14 @@ is listed above.
 <a id="quickstart"></a>
 ## Install and try
 
-You need **Python 3.11+**. Install this source release in your virtual environment:
+You need **Python 3.11+**. Install the alpha from PyPI in your virtual environment:
 
 ```bash
-python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@v0.2.0a2"
+python -m pip install --upgrade dreamrsi==0.2.0a2
 ```
 
-PyPI publication is separate: `0.2.0a1` is the last PyPI version verified for this
-release. The package-sharing workflow below requires the `0.2.0a2` source release.
+The same package includes the Python API and `dreamrsi` command. GitHub CLI (`gh`)
+is an additional requirement only when publishing a policy package to GitHub.
 
 To run the repository examples or contribute, install from source with Git:
 

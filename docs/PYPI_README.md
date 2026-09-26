@@ -6,15 +6,16 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · source version **0.2.0a2**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a2**.
 
 ## Install
 
 ```bash
-python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@v0.2.0a2"
+python -m pip install --upgrade dreamrsi==0.2.0a2
 ```
 
-This command pins the GitHub source release. PyPI publication is separate.
+The package includes the Python API and the `dreamrsi` command. Publishing policy
+packages to GitHub additionally requires GitHub CLI (`gh`).
 
 ## Third-party policy and replay packages
 
@@ -34,7 +35,7 @@ dreamrsi publish .dreamrsi/packages/exports/my-policy-pack.dreamrsi.json
 
 Use a real package reference for `OWNER/REPOSITORY`. Export requires previously saved
 memory; publication requires GitHub CLI and creates a public repository. See the
-[complete walkthrough](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/v0.2.0a2/docs/releases/0.2.0a2.md)
+[complete walkthrough](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/releases/0.2.0a2.md)
 for the diagram, executable integration example, and compatibility requirements.
 
 ## Basic agent integration
