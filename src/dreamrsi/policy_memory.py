@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from dreamrsi._invoke import invoke
@@ -220,6 +223,188 @@ class AdaptivePolicyMemory:
         """Decode a compatible policy; never mutate a stored version."""
         selected = await self._selected_version(family, task)
         return selected[0] if selected is not None else None
+
+    async def export_bundle(self, task: Any, path: str | Path) -> dict[str, Any]:
+        """Write one portable JSON file containing a family's policies and replay trees."""
+        family = self._family(task)
+        entry = await self._entry(family)
+        worlds = await self._worlds(family)
+        versions = entry["versions"] if entry is not None else []
+        if not versions and not worlds:
+            raise ConfigurationError(f"No saved policies or replay trees for family {family!r}")
+
+        payload = {
+            "format": "dreamrsi.policy-bundle",
+            "schema_version": 1,
+            "family": family,
+            "active_policy": entry["active"] if entry is not None else None,
+            "policies": versions,
+            "worlds": worlds,
+        }
+        bundle = {**payload, "sha256": _digest(payload)}
+        target = Path(path).expanduser()
+        temporary: str | None = None
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                newline="\n",
+                dir=target.parent,
+                prefix=f".{target.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as stream:
+                temporary = stream.name
+                json.dump(
+                    bundle,
+                    stream,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                )
+                stream.write("\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, target)
+        except (OSError, TypeError, ValueError) as exc:
+            if temporary is not None:
+                Path(temporary).unlink(missing_ok=True)
+            raise ConfigurationError(
+                f"Could not write Dream-RSI bundle to {target}: {exc}"
+            ) from exc
+        return {
+            "path": str(target),
+            "family": family,
+            "policies": len(versions),
+            "worlds": len(worlds),
+        }
+
+    async def import_bundle(self, path: str | Path, *, task: Any) -> dict[str, Any]:
+        """Validate and import a bundle into an empty policy family in this store.
+
+        Re-importing the same bundle is safe. A bundle cannot silently replace a
+        different local champion; use a fresh namespace to compare or adopt it.
+        """
+        family = self._family(task)
+        target = Path(path).expanduser()
+        try:
+            bundle = json.loads(target.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ConfigurationError(
+                f"Could not read Dream-RSI bundle at {target}: {exc}"
+            ) from exc
+        if not isinstance(bundle, dict):
+            raise PolicyError("Dream-RSI bundle must contain a JSON object")
+        checksum = bundle.pop("sha256", None)
+        try:
+            valid_checksum = isinstance(checksum, str) and _digest(bundle) == checksum
+        except (TypeError, ValueError) as exc:
+            raise PolicyError("Dream-RSI bundle contains invalid JSON values") from exc
+        if not valid_checksum:
+            raise PolicyError("Dream-RSI bundle integrity check failed")
+        if bundle.get("format") != "dreamrsi.policy-bundle" or bundle.get("schema_version") != 1:
+            raise PolicyError("Unsupported Dream-RSI bundle format or schema")
+        if bundle.get("family") != family:
+            raise ConfigurationError(
+                f"Bundle family {bundle.get('family')!r} does not match task family {family!r}"
+            )
+
+        versions = bundle.get("policies")
+        worlds = bundle.get("worlds")
+        active = bundle.get("active_policy")
+        if not isinstance(versions, list) or not isinstance(worlds, list):
+            raise PolicyError("Dream-RSI bundle policies and worlds must be lists")
+        if not versions and not worlds:
+            raise PolicyError("Dream-RSI bundle is empty")
+        if versions and not self.settings.save_policies:
+            raise ConfigurationError("Enable save_policies to import policy versions")
+        if worlds and not self.settings.save_worlds:
+            raise ConfigurationError("Enable save_worlds to import replay trees")
+        if versions:
+            if type(active) is not int or not 0 <= active < len(versions):
+                raise PolicyError("Dream-RSI bundle has an invalid active policy index")
+        elif active is not None:
+            raise PolicyError("An empty policy list cannot have an active policy")
+
+        for version in versions:
+            if not isinstance(version, dict) or not isinstance(version.get("policy"), dict):
+                raise PolicyError("Invalid policy version in Dream-RSI bundle")
+            if _digest(version["policy"]) != version.get("sha256"):
+                raise PolicyError("Policy version integrity check failed")
+            raw_quality = version.get("raw_quality")
+            if raw_quality is not None and (
+                isinstance(raw_quality, bool)
+                or not isinstance(raw_quality, (int, float))
+                or not math.isfinite(raw_quality)
+            ):
+                raise PolicyError("Policy bundle contains invalid raw quality")
+            try:
+                self.codec.decode(version["policy"])
+            except Exception as exc:
+                raise PolicyError(f"Could not load bundled policy: {exc}") from exc
+
+        validated_worlds = []
+        seen_trees: set[str] = set()
+        for item in worlds:
+            if not isinstance(item, dict) or not {"task", "world", "sha256"}.issubset(item):
+                raise PolicyError("Invalid replay world in Dream-RSI bundle")
+            payload = {"task": item["task"], "world": item["world"]}
+            if _digest(payload) != item["sha256"]:
+                raise PolicyError("Replay world integrity check failed")
+            try:
+                task_key(item["task"])
+                world = world_load(item["world"])
+            except Exception as exc:
+                raise PolicyError(f"Could not load bundled replay tree: {exc}") from exc
+            tree_id = world.tree.tree_id
+            if tree_id in seen_trees:
+                raise PolicyError("Dream-RSI bundle contains duplicate replay trees")
+            seen_trees.add(tree_id)
+            if await self._allowed(self.settings.accept_world, task, item["task"], world):
+                validated_worlds.append(item)
+
+        existing = await self._entry(family)
+        if versions and existing is not None and existing["versions"]:
+            existing_hashes = [version["sha256"] for version in existing["versions"]]
+            bundle_hashes = [version["sha256"] for version in versions]
+            if existing_hashes != bundle_hashes or existing["active"] != active:
+                raise ConfigurationError(
+                    "This task family already has different policies; import into a fresh "
+                    "policy-memory namespace to avoid replacing its champion"
+                )
+
+        current_worlds = await self._worlds(family)
+        current_tree_ids = {item["world"]["tree"]["tree_id"] for item in current_worlds}
+        new_worlds = [
+            item
+            for item in validated_worlds
+            if item["world"]["tree"]["tree_id"] not in current_tree_ids
+        ]
+        if new_worlds and self.settings.save_worlds:
+            combined = current_worlds + new_worlds
+            await self.store.save_checkpoint(
+                self._world_key(family),
+                {"schema": 1, "namespace": self.namespace, "family": family, "worlds": combined},
+            )
+        added_policies = 0
+        if versions and self.settings.save_policies and existing is None:
+            await self.store.save_checkpoint(
+                self._key(family),
+                {
+                    "schema": 1,
+                    "namespace": self.namespace,
+                    "family": family,
+                    "versions": versions,
+                    "active": active,
+                },
+            )
+            added_policies = len(versions)
+        return {
+            "family": family,
+            "policies": added_policies,
+            "worlds": len(new_worlds) if self.settings.save_worlds else 0,
+        }
 
     async def remember(
         self,

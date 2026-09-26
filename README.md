@@ -14,6 +14,7 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#architecture">How it works</a> ·
+  <a href="#package-cli">Package sharing</a> ·
   <a href="#comparison">Research comparison</a> ·
   <a href="#roadmap">Roadmap</a> ·
   <a href="docs/integration.md">Integration guide</a>
@@ -51,7 +52,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.2.0a1` · APIs may change |
+| Source release | `0.2.0a2` · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
 | Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
 
@@ -128,7 +129,16 @@ policy, not model weights. Neither experiment reproduces the published
 Dream-RSI benchmarks, and neither demonstrates generalization to arbitrary
 agents or task families.
 
-## What's new in 0.2.0a1
+## What's new in 0.2.0a2
+
+Third-party developers can now distribute reusable exploration policies and
+recorded replay datasets as portable JSON bundles. The GitHub package CLI provides
+discovery, export, publication and installation; recipients retain control over
+compatibility, quality checks and whether further policy development is allowed.
+See the [release walkthrough](docs/releases/0.2.0a2.md) for the workflow diagram,
+a complete recipient example and compatibility limits.
+
+### Earlier 0.2.0a1 changes
 
 This alpha introduces persistent policy reuse through `AdaptivePolicyMemory`,
 improves replay cost accounting at the recorded-tree boundary, and gives the
@@ -163,11 +173,14 @@ is listed above.
 <a id="quickstart"></a>
 ## Install and try
 
-You need **Python 3.11+**. Install the published alpha in your virtual environment:
+You need **Python 3.11+**. Install this source release in your virtual environment:
 
 ```bash
-python -m pip install dreamrsi==0.2.0a1
+python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@v0.2.0a2"
 ```
+
+PyPI publication is separate: `0.2.0a1` is the last PyPI version verified for this
+release. The package-sharing workflow below requires the `0.2.0a2` source release.
 
 To run the repository examples or contribute, install from source with Git:
 
@@ -216,6 +229,39 @@ python -m pip install "git+https://github.com/TheAstrayDev/dream-rsi-sdk.git@mai
 
 This installs the current `main` branch. Replace `main` with a commit SHA to pin your
 installation. The package and import name are **`dreamrsi`**.
+
+## Third-party policies and replay datasets
+
+<a id="package-cli"></a>
+
+Dream-RSI supports community-developed exploration policies and replay datasets:
+collections of recorded discovery trees and their task context. Developers can
+share one or more task families in a portable bundle and integrate them with their
+own agents through `AdaptivePolicyMemory`, explicit policy codecs and configurable
+acceptance rules. Model weights and application infrastructure are not bundled.
+
+Public GitHub repositories provide the catalog and storage. The CLI lists packages
+by GitHub stars, exports saved memory without model calls, and imports compatible
+packages into the recipient's local SQLite store.
+
+```bash
+dreamrsi list
+dreamrsi install OWNER/REPOSITORY
+dreamrsi save exploration-pack --all
+dreamrsi publish .dreamrsi/packages/exports/exploration-pack.dreamrsi.json
+```
+
+Replace `OWNER/REPOSITORY` with an actual published package. Save expects existing
+data in `.dreamrsi/memory.sqlite3`; use `-d PATH -n auto` for another database.
+Publishing requires [GitHub CLI](https://cli.github.com/) and makes package data
+public. Installation does not automatically change an agent: the application must
+use the same database and family key, and pass the loaded policy to its runtime.
+
+Read the [package guide](docs/packages.md), the
+[0.2.0a2 integration walkthrough and diagram](docs/releases/0.2.0a2.md), or run
+the [complete local transfer example](examples/shared_policy_bundle.py).
+Reuse remains subject to the recipient's quality checks; compatibility and savings
+are measured properties, not guarantees attached to a package's popularity.
 
 ## Start with two functions
 
@@ -349,6 +395,31 @@ outcome = await memory.run(task)
 print(outcome.reused_policy, outcome.trained, outcome.promoted, outcome.incumbent_saved)
 ```
 
+### Share saved policies and replay trees
+
+After the memory has saved a policy and its training worlds, export a single file:
+
+```python
+await memory.export_bundle(task, "shared-policy.dreamrsi.json")
+```
+
+The recipient creates a compatible `AdaptivePolicyMemory`, then imports and runs:
+
+```python
+await other_memory.import_bundle("shared-policy.dreamrsi.json", task=task)
+result = await other_memory.run(new_related_task)
+print(result.reused_policy, result.trained)
+```
+
+The bundle contains saved policy versions, the selected version, and replay trees with
+their original task data. Import checks the file checksum, policy source integrity, and
+tree structure; it never executes arbitrary serialized Python. A passing policy avoids
+policy-development calls, while the recipient's normal agent still solves each new task.
+Both sides must use the same task-family key and compatible policy sandbox. Imports do not
+replace a different local champion; use a fresh `namespace` to bring in another bundle.
+The file can contain prompts, observations, proposals, or other task data, so inspect it
+before sharing. JSON-compatible tasks and registered policy codecs are required.
+
 Choose a family key that includes the task and objective version, and use a
 *raw* quality metric rather than a score that already penalizes work. A saved
 policy is loaded as a new object; old versions are never overwritten. The
@@ -470,6 +541,7 @@ the [official repository](https://github.com/zhengkid/Dream-RSI) stated that cod
 | Root/leaf selection and batched work | ✓ | Shared action validation and concurrent online execution |
 | Replay of recorded transitions | ✓ | StrictReplay; unrevealed outcomes stay hidden |
 | Growing historical world pool | ✓ | SQLite checkpoints and restart recovery; uncertain external calls require reconciliation |
+| Sharing saved policies and replay trees | ✓ | One checksummed JSON bundle transfers all stored family versions and trees; receiver checks task family and sandbox |
 | Decisions based on revealed observations | ✓ | Shared prefix-only observations, diagnostics and history |
 | Quality/work/parallelism objective | ✓ | Section 3 β₁/β₂; separate Appendix B beta sweep with documented SDK AUC conventions |
 | Appendix B solve, helpers and grid planning | ✓ | Separate grid runtime with bounded class-source execution and prior-live planning snapshots |

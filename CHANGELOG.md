@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0a2 — 2026-09-27
+
+- Export and import a family's saved policy versions and replay trees as one
+  checksummed JSON bundle. Import validates the family, policy codecs, and tree
+  structure; it does not replace a different local champion.
+- Add `dreamrsi list`, `install`, `save`, and `publish` for sharing bundles through
+  public GitHub repositories and Release assets without a separate package host.
+- Allow one package to combine multiple task families and install them together,
+  checking all local policy conflicts before importing any family.
+- Add `save --all`, repeated `--family` selection, `-d` for the source database,
+  and `-n auto` for an unambiguous namespace. Saving makes no model requests and
+  refuses to overwrite an existing CLI export.
+- Document third-party policy and replay datasets, compatibility requirements,
+  receiver-controlled admission and training, and a runnable two-store example.
+- Keep package listings usable in legacy Windows consoles by escaping characters
+  that the terminal encoding cannot represent.
+
+This second alpha in the `0.2` series turns local policy memory into portable,
+community-authored artifacts. It does not change model weights or establish a
+new benchmark result. The package-sharing interface remains experimental.
+See the [release walkthrough](docs/releases/0.2.0a2.md) and
+[package guide](docs/packages.md).
+
 ## 0.2.0a1 — 2026-09-24
 
 - Add opt-in durable `AdaptivePolicyMemory` so a saved champion can be tried on

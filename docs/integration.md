@@ -96,7 +96,27 @@ The world pool and selected policies stay on the same `DreamRSI` instance betwee
 
 `export_run(result, path, fmt="json")` requires JSON-compatible data and does not stringify
 unsupported objects silently. It is an export, not a durable campaign-resume mechanism.
-`RunResult` contains live policy and tree objects; it is not a portable executable policy package.
+`RunResult` contains live policy and tree objects; it is not itself a portable package.
+For cross-process sharing, `AdaptivePolicyMemory.export_bundle(task, path)` writes one
+integrity-checked JSON file with the family's saved policy versions and replay worlds.
+The recipient imports it into their own policy memory and then calls `memory.run(task)`:
+
+```python
+# Sender, after memory has saved a champion and training worlds:
+await memory.export_bundle(task, "shared-policy.dreamrsi.json")
+
+# Recipient, with a compatible AdaptivePolicyMemory and task family:
+await memory.import_bundle("shared-policy.dreamrsi.json", task=task)
+result = await memory.run(new_related_task)
+```
+
+The recipient supplies their own agent, evaluator, quality floor and sandbox. A passing
+imported policy skips policy training; the ordinary task run still uses the recipient's
+agent. Family keys must match. Imports validate hashes and tree structure, never execute
+arbitrary serialized Python; generated source runs only through the configured policy
+interpreter. The bundle contains recorded task/tree data and policy source, so review it
+before sharing. Non-JSON state and unregistered custom policy codecs must be adapted by
+the application first.
 
 See the [architecture audit](../ARCHITECTURE.md) and [README](../README.md) for current limits.
 

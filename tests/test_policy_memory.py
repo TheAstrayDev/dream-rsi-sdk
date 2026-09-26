@@ -244,6 +244,137 @@ async def test_real_runtime_reuses_saved_champion_without_training(tmp_path):
     await new.close()
 
 
+async def test_policy_bundle_transfers_all_versions_and_replay_tree(tmp_path):
+    from dreamrsi.storage import InMemoryStore
+
+    task = {"kind": "labs"}
+
+    def memory(store):
+        return AdaptivePolicyMemory(
+            store=store,
+            runtime_factory=lambda task, policy: None,
+            family_of=lambda item: item["kind"],
+            raw_quality=lambda item, result: 1.0,
+            minimum_quality=lambda item: 0.5,
+        )
+
+    source = memory(InMemoryStore())
+    assert await source.remember(task, GreedyPolicy(), origin="incumbent", raw_quality=0.8)
+    assert await source.remember(task, DepthFirstPolicy(), origin="promoted", raw_quality=0.9)
+    from dreamrsi import PolicyArtifact, PolicySandbox, SourcePolicy
+
+    source_policy = SourcePolicy(
+        PolicyArtifact('def decide(view):\n    return {"expand": [], "stop": True}\n'),
+        PolicySandbox(),
+    )
+    assert await source.remember(task, source_policy, origin="promoted", raw_quality=0.9)
+    tree = DiscoveryTree()
+    root = tree.create_root(state={"seed": 1})
+    tree.add_node(root.id, state={"seed": 2}, score=0.9)
+    tree.commit()
+    await source._remember_world("labs", {"kind": "labs", "seed": 1}, ReplayWorld(tree))
+
+    path = tmp_path / "shared" / "labs.dreamrsi.json"
+    exported = await source.export_bundle(task, path)
+    assert exported == {
+        "path": str(path),
+        "family": "labs",
+        "policies": 3,
+        "worlds": 1,
+    }
+
+    target = memory(InMemoryStore())
+    imported = await target.import_bundle(path, task=task)
+    assert imported == {"family": "labs", "policies": 3, "worlds": 1}
+    loaded_policy = await target.load("labs", task=task)
+    assert isinstance(loaded_policy, SourcePolicy)
+    assert loaded_policy.artifact.source == source_policy.artifact.source
+    versions = await target.store.get_checkpoint(target._key("labs"))
+    worlds = await target._worlds("labs")
+    assert len(versions["versions"]) == 3
+    assert versions["active"] == 2
+    assert worlds[0]["world"]["tree"]["tree_id"] == tree.tree_id
+
+    # Importing the same file twice is safe and does not duplicate saved data.
+    assert await target.import_bundle(path, task=task) == {
+        "family": "labs",
+        "policies": 0,
+        "worlds": 0,
+    }
+    assert len(await target._worlds("labs")) == 1
+
+    calls = []
+
+    def runtime_factory(task, policy):
+        class Runtime:
+            _method = SimpleNamespace(online=False)
+            validation = HoldoutPipeline([{"kind": "labs", "seed": task["seed"] + 100}])
+
+            async def run(self, task):
+                calls.append(("run", policy))
+                tree = DiscoveryTree()
+                root = tree.create_root()
+                tree.add_node(root.id, score=0.8)
+                tree.commit()
+                return SimpleNamespace(best_score=0.8, tree=tree)
+
+            async def record_world(self, task, result):
+                return ReplayWorld(result.tree)
+
+            async def improve(self, task, rounds):
+                calls.append(("train", rounds))
+                raise AssertionError("A passing imported policy should not be retrained")
+
+        return Runtime()
+
+    receiver = AdaptivePolicyMemory(
+        store=target.store,
+        runtime_factory=runtime_factory,
+        family_of=lambda item: item["kind"],
+        raw_quality=lambda item, result: result.best_score,
+        minimum_quality=lambda item: 0.5,
+    )
+    reused = await receiver.run({"kind": "labs", "seed": 3})
+    assert reused.reused_policy and not reused.trained
+    assert isinstance(calls[0][1], SourcePolicy)
+    assert calls == [("run", calls[0][1])]
+
+
+async def test_policy_bundle_rejects_corruption_family_mismatch_and_champion_overwrite(tmp_path):
+    from dreamrsi.storage import InMemoryStore
+
+    def memory(store):
+        return AdaptivePolicyMemory(
+            store=store,
+            runtime_factory=lambda task, policy: None,
+            family_of=lambda item: item["kind"],
+            raw_quality=lambda item, result: 1.0,
+            minimum_quality=lambda item: 0.5,
+        )
+
+    source = memory(InMemoryStore())
+    task = {"kind": "labs"}
+    await source.remember(task, GreedyPolicy())
+    path = tmp_path / "policy.json"
+    await source.export_bundle(task, path)
+
+    wrong_family = memory(InMemoryStore())
+    with pytest.raises(ConfigurationError, match="does not match"):
+        await wrong_family.import_bundle(path, task={"kind": "packing"})
+
+    corrupted = path.read_text(encoding="utf-8").replace('"family":"labs"', '"family":"packing"')
+    path.write_text(corrupted, encoding="utf-8")
+    with pytest.raises(PolicyError, match="integrity"):
+        await wrong_family.import_bundle(path, task=task)
+
+    await source.export_bundle(task, path)
+    occupied = memory(InMemoryStore())
+    await occupied.remember(task, DepthFirstPolicy())
+    with pytest.raises(ConfigurationError, match="fresh policy-memory namespace"):
+        await occupied.import_bundle(path, task=task)
+    assert isinstance(await occupied.load("labs", task=task), DepthFirstPolicy)
+
+
 async def test_validation_task_cannot_be_reused_across_improvements():
     from dreamrsi.storage import InMemoryStore
 

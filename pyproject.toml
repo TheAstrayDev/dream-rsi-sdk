@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "editables>=0.3"]
 build-backend = "hatchling.build"
 
 [project]
 name = "dreamrsi"
-version = "0.2.0a1"
+version = "0.2.0a2"
 description = "Independent, unofficial Dream-RSI-inspired Python SDK for exploration-policy replay and search (alpha)."
 readme = "docs/PYPI_README.md"
 license = "Apache-2.0"
@@ -40,6 +40,9 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/TheAstrayDev/dream-rsi-sdk"
 Documentation = "https://github.com/TheAstrayDev/dream-rsi-sdk#readme"
+
+[project.scripts]
+dreamrsi = "dreamrsi.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dreamrsi"]
