@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0a3 — 2026-09-28
+
+- Snapshot root and attempt payloads when adding discovery-tree nodes, preserving
+  recorded observations and diagnostics if an agent later mutates its input objects.
+- Give the default, zero-LLM optimizer a bounded portfolio of short branching
+  and stopping policies before incumbent-specific parameter variations. On a
+  deterministic replay counterexample, a newly reachable candidate preserves
+  raw quality while reducing attempted expansions from three to one.
+- Keep independent validation and the existing cost/quality promotion gate;
+  the counterexample is not evidence of a general deployment speedup.
+- Restrict source distributions to SDK source and release documentation so
+  untracked local benchmarks and drafts cannot enter PyPI archives.
+
+See the [release notes](docs/releases/0.2.0a3.md).
+
 ## 0.2.0a2 — 2026-09-27
 
 - Export and import a family's saved policy versions and replay trees as one

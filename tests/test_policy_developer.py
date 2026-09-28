@@ -73,7 +73,13 @@ async def test_hostile_or_unsupported_program_is_bounded(body):
         await PolicySandbox(max_steps=1000).execute("def decide(view):\n    " + body, view())
 
 
-async def test_rewrite_uses_real_replay_feedback_and_recovers_from_bad_source():
+async def test_rewrite_uses_real_replay_feedback_and_recovers_from_bad_source(monkeypatch):
+    from dreamrsi.optimization import DeterministicPolicyOptimizer
+
+    async def no_cheap_candidates(self, incumbent, evidence, budget=None):
+        return []
+
+    monkeypatch.setattr(DeterministicPolicyOptimizer, "generate", no_cheap_candidates)
     requests = []
     sources = iter(["def decide(view):\n    import os", REFINE])
 

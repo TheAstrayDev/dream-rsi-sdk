@@ -80,15 +80,16 @@ class DiscoveryTree:
         if self._root_id is not None:
             raise TreeError("Root already exists")
 
+        snapshot = copy.deepcopy({"state": state, "metadata": metadata or {}})
         node = DiscoveryNode(
             id=node_id or str(uuid.uuid4()),
             tree_id=self.tree_id,
             parent_id=None,
             depth=0,
-            state=state,
+            state=snapshot["state"],
             status=NodeStatus.COMPLETED,
             creation_order=self._next_order,
-            metadata=metadata or {},
+            metadata=snapshot["metadata"],
         )
         self._next_order += 1
         self._nodes[node.id] = node
@@ -126,21 +127,33 @@ class DiscoveryTree:
         if nid in self._nodes:
             raise TreeError(f"Node {nid!r} already exists in tree")
 
+        # Freeze the attempt's payload before linking it into the live tree.
+        # An adapter may reuse and mutate the objects after this call; replay
+        # must still observe the values that belonged to this attempt.
+        snapshot = copy.deepcopy(
+            {
+                "state": state,
+                "proposal": proposal,
+                "action": action,
+                "observation": observation,
+                "metadata": metadata or {},
+            }
+        )
         node = DiscoveryNode(
             id=nid,
             tree_id=self.tree_id,
             parent_id=parent_id,
             depth=parent.depth + 1,
-            state=state,
-            proposal=proposal,
-            action=action,
-            observation=observation,
+            state=snapshot["state"],
+            proposal=snapshot["proposal"],
+            action=snapshot["action"],
+            observation=snapshot["observation"],
             score=score,
             status=status,
             cost=cost,
             latency_ms=latency_ms,
             creation_order=self._next_order,
-            metadata=metadata or {},
+            metadata=snapshot["metadata"],
         )
         self._next_order += 1
         parent.children_ids.append(nid)

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dreamrsi"
-version = "0.2.0a2"
+version = "0.2.0a3"
 description = "Independent, unofficial Dream-RSI-inspired Python SDK for exploration-policy replay and search (alpha)."
 readme = "docs/PYPI_README.md"
 license = "Apache-2.0"
@@ -46,6 +46,16 @@ dreamrsi = "dreamrsi.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dreamrsi"]
+
+[tool.hatch.build.targets.sdist]
+# Never package local benchmark runs, marketing drafts, or credentials from the checkout.
+only-include = [
+    "src/dreamrsi",
+    "docs/PYPI_README.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

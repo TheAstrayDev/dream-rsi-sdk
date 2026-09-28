@@ -6,16 +6,25 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a2**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a3**.
 
 ## Install
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a2
+python -m pip install --upgrade dreamrsi==0.2.0a3
 ```
 
 The package includes the Python API and the `dreamrsi` command. Publishing policy
 packages to GitHub additionally requires GitHub CLI (`gh`).
+
+## New in 0.2.0a3
+
+Discovery trees snapshot attempt data as nodes are added, so later agent-side
+mutations cannot rewrite recorded observations. The free replay optimizer now
+tests several branching and stopping policies before parameter tweaks. A
+deterministic regression tree shows the same recorded quality with one attempted
+expansion instead of three; unseen-task savings still require independent validation.
+See the [release notes](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/releases/0.2.0a3.md).
 
 ## Third-party policy and replay packages
 

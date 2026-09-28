@@ -79,7 +79,8 @@ async def test_sqlite_checkpoint_resume_and_tree_storage(tmp_path):
     second = await resumed.improve(3, rounds=2)
     assert len(second.worlds) == 2
     assert second.worlds[0].tree.to_dict() == first.worlds[0].tree.to_dict()
-    assert resumed.usage.spent["model_calls"] == 4
+    # The cheap replay portfolio can promote a one-call policy after round 1.
+    assert resumed.usage.spent["model_calls"] == 3
     assert await reopened.get_events(limit=1)
     await reopened.close()
 

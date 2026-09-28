@@ -1,13 +1,13 @@
 import pytest
 
-from dreamrsi import Budget, DefaultMethod, DreamRSI, HoldoutPipeline
+from dreamrsi import Budget, DefaultMethod, DreamRSI, DreamRSIConfig, HoldoutPipeline
 from dreamrsi.accounting import Usage, UsageLedger
 from dreamrsi.discovery import DiscoveryTree
 from dreamrsi.errors import BudgetExceeded, ConfigurationError
 from dreamrsi.models.policy import PolicyDecision
 from dreamrsi.optimization import DeterministicPolicyOptimizer
-from dreamrsi.policies import GreedyPolicy
-from dreamrsi.replay import ReplayWorld
+from dreamrsi.policies import BalancedPolicy, FixedParallelPolicy, GreedyPolicy
+from dreamrsi.replay import ReplayWorld, StrictReplay
 from dreamrsi.storage import SQLiteStore
 
 
@@ -25,6 +25,46 @@ def test_total_llm_call_limit_counts_agent_and_developer_and_restores_old_ledger
     restored = UsageLedger(Budget(total_llm_calls=2))
     restored.restore(old)
     assert restored.spent["total_llm_calls"] == 2
+
+
+async def test_cheap_optimizer_finds_quality_preserving_early_stop():
+    tree = DiscoveryTree("optimizer-counterexample")
+    tree.create_root(node_id="r")
+    tree.add_node("r", node_id="good", score=1.0)
+    tree.add_node("r", node_id="bad", score=0.0)
+    tree.commit()
+    world = ReplayWorld(tree)
+    incumbent = BalancedPolicy(batch_size=2)
+    replay = StrictReplay(max_rounds=2, max_parallelism=2)
+    baseline = await replay.replay(world, incumbent)
+    variants = await DeterministicPolicyOptimizer(num_variants=5).generate(
+        incumbent, [baseline]
+    )
+    measured = [await replay.replay(world, variant) for variant in variants]
+
+    assert len(variants) == 5
+    assert baseline.best_score == 1.0
+    assert sum(len(step.batch) for step in baseline.steps) == 3
+    assert any(
+        trajectory.best_score == baseline.best_score
+        and sum(len(step.batch) for step in trajectory.steps) == 1
+        for trajectory in measured
+    )
+
+    runtime = DreamRSI(
+        agent=lambda task: task,
+        evaluator=float,
+        policy=incumbent,
+        budget=Budget(model_calls=3, max_parallelism=2),
+        config=DreamRSIConfig(replay_max_rounds=2),
+        method=DefaultMethod(online=False),
+    )
+    await runtime.add_recorded_world(0, world)
+    result = await runtime.improve(0)
+    assert isinstance(result.champion_policy, FixedParallelPolicy)
+    assert result.champion_policy._branches == 1
+    assert result.champion_policy._max_depth == 1
+    assert result.costs.model_calls == 0
 
 
 async def test_offline_improvement_reuses_run_and_rejects_holdout_overlap():

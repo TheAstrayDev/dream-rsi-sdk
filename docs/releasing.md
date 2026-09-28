@@ -4,7 +4,8 @@ Package author: **TheAstrayDev**. Package name: `dreamrsi`.
 
 1. Update `pyproject.toml`, `dreamrsi.__version__`, README and package README to the
    same version; record evidence and limitations in CHANGELOG.
-2. Run tests, Ruff, Pyright, build and `twine check --strict`. Verify an installed wheel,
+2. Run tests, Ruff, Pyright, build and `twine check --strict`. Inspect both
+   archives for untracked files and credentials, then verify an installed wheel,
    including the process worker. Commit and push all release inputs to GitHub first.
 3. Configure the PyPI Trusted Publisher for owner `TheAstrayDev`, repository
    `dream-rsi-sdk`, workflow `publish.yml`, environment `pypi`. For the first upload,

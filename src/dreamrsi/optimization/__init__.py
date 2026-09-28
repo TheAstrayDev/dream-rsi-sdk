@@ -9,7 +9,7 @@ from dreamrsi.models.policy import PolicyDeploymentStatus, PolicyVersion
 
 
 class DeterministicPolicyOptimizer:
-    """Generates policy variants by tweaking parameters of built-in policies."""
+    """Try a small, replay-only portfolio before tuning incumbent parameters."""
 
     def __init__(self, num_variants: int = 5, seed: int | None = None):
         self._num_variants = num_variants
@@ -23,10 +23,20 @@ class DeterministicPolicyOptimizer:
             from dreamrsi.errors import ConfigurationError
 
             raise ConfigurationError("Custom policies require an explicit optimizer/developer")
-        variants = []
+        # The previous search only increased BalancedPolicy's batch size and
+        # exploration coefficient. It could not represent stopping after one
+        # good branch, even when replay proved that this saved calls at equal
+        # quality. Keep the configured evaluation count, but spend its first
+        # slots on distinct branching/stopping behaviours.
+        variants = [
+            policies.FixedParallelPolicy(branches=1, max_depth=1),
+            policies.FixedParallelPolicy(branches=1, max_depth=2),
+            policies.FixedParallelPolicy(branches=2, max_depth=2),
+            policies.BalancedPolicy(batch_size=1),
+        ][: max(0, self._num_variants)]
         incumbent_type = type(incumbent).__name__
 
-        for i in range(self._num_variants):
+        for i in range(max(0, self._num_variants - len(variants))):
             if incumbent_type == "BalancedPolicy":
                 # tweak exploration_coeff and batch_size
                 coeff = getattr(incumbent, "_exploration_coeff", 1.41) + ((i + 1) * 0.1)

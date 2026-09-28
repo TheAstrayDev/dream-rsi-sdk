@@ -43,7 +43,9 @@ and want to experiment with how their search branches, batches work, and stops.
 The core has no dependency on a model provider or agent framework.
 
 **Alpha means a working foundation, not a complete reproduction of the paper.**
-The default optimizer searches built-in parameters. `LLMPolicyDeveloper` can instead
+The default optimizer first replays a small portfolio of built-in branching and
+stopping policies, then uses any remaining candidate slots for parameter tuning.
+`LLMPolicyDeveloper` can instead
 revise executable policy source through your model client and measured replay feedback.
 Its lightweight interpreter needs no Docker and supports a restricted SDK language.
 
@@ -52,7 +54,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.2.0a2` · APIs may change |
+| Version | `0.2.0a3` · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
 | Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
 
@@ -129,7 +131,18 @@ policy, not model weights. Neither experiment reproduces the published
 Dream-RSI benchmarks, and neither demonstrates generalization to arbitrary
 agents or task families.
 
-## What's new in 0.2.0a2
+## What's new in 0.2.0a3
+
+Discovery trees now snapshot each attempt's state, observation and diagnostics
+when the node is added. Later mutations by an agent cannot silently rewrite
+earlier replay evidence. The zero-LLM optimizer also checks short branching and
+stopping policies before local parameter tweaks. In a deterministic regression
+tree, this exposes an equal-quality candidate with **one attempted expansion
+instead of three**; this is a test of the search gap, not a claim of savings on
+unseen tasks. Independent validation remains essential before deployment.
+See the [0.2.0a3 release notes](docs/releases/0.2.0a3.md).
+
+### Earlier 0.2.0a2 changes
 
 Share exploration policies and recorded search experience across projects.
 Version `0.2.0a2` packages policy versions and replay trees into portable JSON
@@ -177,7 +190,7 @@ is listed above.
 You need **Python 3.11+**. Install the alpha from PyPI in your virtual environment:
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a2
+python -m pip install --upgrade dreamrsi==0.2.0a3
 ```
 
 The same package includes the Python API and `dreamrsi` command. GitHub CLI (`gh`)

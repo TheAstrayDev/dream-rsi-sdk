@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from dreamrsi import Budget, DreamRSI, FunctionalAgentAdapter
+from dreamrsi import Budget, DefaultMethod, DreamRSI, FunctionalAgentAdapter
 from dreamrsi.artifacts import PolicyArtifact, SourcePolicy
 from dreamrsi.developer import DeveloperConfig, LLMPolicyDeveloper
 from dreamrsi.errors import SandboxError
@@ -190,6 +190,7 @@ async def test_failed_revision_never_inherits_a_score_and_repair_is_measured():
         evaluator=float,
         policy_optimizer=developer,
         budget=Budget(model_calls=2),
+        method=DefaultMethod(force_developer=True),
     )
     await runtime.improve(1, rounds=1)
     bad, good = developer.history

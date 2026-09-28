@@ -31,6 +31,27 @@ def test_canonical_types():
     assert PolicyView is ReplayView
 
 
+def test_tree_snapshots_mutable_attempt_data_before_commit():
+    initial = {"value": 0}
+    observation = {"quality": 1.0}
+    metadata = {"diagnostics": ["original"]}
+    tree = DiscoveryTree("snapshot")
+    tree.create_root(node_id="r", state=initial)
+    tree.add_node(
+        "r", node_id="a", state={"value": 1}, observation=observation,
+        score=1.0, metadata=metadata,
+    )
+
+    initial["value"] = 99
+    observation["quality"] = -1.0
+    metadata["diagnostics"].append("later")
+    tree.commit()
+
+    assert tree.root.state == {"value": 0}
+    assert tree.get_node("a").observation == {"quality": 1.0}
+    assert tree.get_node("a").metadata == {"diagnostics": ["original"]}
+
+
 async def test_replay_score_coefficients():
     result = await StrictReplay(beta1=1, beta2=2).replay(world(), BreadthFirstPolicy(batch_size=2))
     assert result.revealed_node_ids == ["a", "c", "b"]
