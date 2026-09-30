@@ -74,6 +74,12 @@ class PolicyCodec:
 
         from dreamrsi import policies
 
+        if type(policy) is policies.PrefixPolicy:
+            return {
+                "kind": "prefix",
+                "policy": self.encode(policy.policy),
+                "max_rounds": policy.max_rounds,
+            }
         if isinstance(policy, SourcePolicy):
             return {
                 "kind": "source",
@@ -101,6 +107,13 @@ class PolicyCodec:
 
         from dreamrsi import policies
 
+        if data["kind"] == "prefix":
+            if set(data) != {"kind", "policy", "max_rounds"}:
+                raise PolicyError("Invalid prefix policy artifact")
+            try:
+                return policies.PrefixPolicy(self.decode(data["policy"]), data["max_rounds"])
+            except ValueError as exc:
+                raise PolicyError("Invalid prefix round limit") from exc
         if data["kind"] == "source":
             capabilities = (
                 self.sandbox.capabilities() if hasattr(self.sandbox, "capabilities") else None
@@ -112,7 +125,11 @@ class PolicyCodec:
             )
         if data["kind"] == "custom":
             return self.custom[data["name"]][2](data["state"])
-        if data["kind"] != "builtin" or data["name"] not in policies.__all__:
+        if (
+            data["kind"] != "builtin"
+            or data["name"] not in policies.__all__
+            or data["name"] == "PrefixPolicy"
+        ):
             raise PolicyError("Unknown policy codec")
         policy = getattr(policies, data["name"])()
         if set(data["state"]) != set(vars(policy)):

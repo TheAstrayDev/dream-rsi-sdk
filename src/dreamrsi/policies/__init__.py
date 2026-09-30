@@ -6,6 +6,7 @@ from .depth_first import DepthFirstPolicy
 from .epsilon_greedy import EpsilonGreedyPolicy
 from .fixed_parallel import FixedParallelPolicy
 from .greedy import GreedyPolicy
+from .prefix import PrefixPolicy
 from .random_policy import RandomPolicy
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "EpsilonGreedyPolicy",
     "BalancedPolicy",
     "FixedParallelPolicy",
+    "PrefixPolicy",
 ]

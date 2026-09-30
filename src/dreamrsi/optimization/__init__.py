@@ -1,4 +1,5 @@
 import itertools
+import math
 import time
 import uuid
 from collections.abc import Callable
@@ -9,17 +10,94 @@ from dreamrsi.models.policy import PolicyDeploymentStatus, PolicyVersion
 
 
 class DeterministicPolicyOptimizer:
-    """Try a small, replay-only portfolio before tuning incumbent parameters."""
+    """Distil replay prefixes, then try a bounded portfolio without model calls.
 
-    def __init__(self, num_variants: int = 5, seed: int | None = None):
+    ``prefix_search=False`` retains the parameter-only portfolio. Synthesized
+    prefixes still pass the runtime's raw-quality and independent holdout gates.
+    """
+
+    def __init__(
+        self, num_variants: int = 5, seed: int | None = None,
+        *, quality_metric=None, prefix_search: bool = True,
+    ):
         self._num_variants = num_variants
         self._seed = seed
+        if quality_metric is not None and not callable(quality_metric):
+            raise ValueError("quality_metric must be callable")
+        self._quality_metric = quality_metric
+        if type(prefix_search) is not bool:
+            raise ValueError("prefix_search must be boolean")
+        self._prefix_search = prefix_search
+
+    def _prefix_round_limit(self, trajectories):
+        """Smallest constant cap preserving each recorded incumbent raw quality."""
+        if not isinstance(trajectories, (list, tuple)) or not trajectories:
+            return None
+        caps = []
+        for trajectory in trajectories:
+            if self._quality_metric is None:
+                target = trajectory.best_score
+                root_reached = any(
+                    record.get("depth") == 0
+                    and record.get("score") is not None
+                    and target is not None
+                    and record["score"] >= target
+                    for record in trajectory.observations.values()
+                )
+                first = 0 if root_reached else next(
+                    (
+                        step.round_number for step in trajectory.steps
+                        if step.best_score_so_far is not None
+                        and step.best_score_so_far >= target
+                    ),
+                    None,
+                ) if target is not None else None
+            else:
+                values = {}
+                for node_id, observation in trajectory.observations.items():
+                    try:
+                        value = self._quality_metric(observation)
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if (
+                        not isinstance(value, bool)
+                        and isinstance(value, (int, float))
+                        and math.isfinite(value)
+                    ):
+                        values[node_id] = float(value)
+                target = max(values.values()) if values else None
+                reached = {
+                    node_id for node_id, value in values.items()
+                    if value == target
+                }
+                roots = {
+                    node_id for node_id, observation in trajectory.observations.items()
+                    if observation.get("depth") == 0
+                }
+                first = 0 if reached & roots else next(
+                    (
+                        step.round_number for step in trajectory.steps
+                        if reached.intersection(step.revealed_nodes)
+                    ),
+                    None,
+                )
+            if (
+                isinstance(target, bool)
+                or not isinstance(target, (int, float))
+                or not math.isfinite(target)
+                or first is None
+            ):
+                return None
+            caps.append(first)
+        cap = max(caps)
+        return cap if any(cap < t.total_rounds for t in trajectories) else None
 
     async def generate(
         self, incumbent: Any, evidence: Any, budget: Any | None = None
     ) -> list[Any]:
         supported = {getattr(policies, name) for name in policies.__all__}
-        if type(incumbent) not in supported:
+        cap = self._prefix_round_limit(evidence) if self._prefix_search else None
+        if type(incumbent) not in supported and cap is None:
             from dreamrsi.errors import ConfigurationError
 
             raise ConfigurationError("Custom policies require an explicit optimizer/developer")
@@ -33,7 +111,19 @@ class DeterministicPolicyOptimizer:
             policies.FixedParallelPolicy(branches=1, max_depth=2),
             policies.FixedParallelPolicy(branches=2, max_depth=2),
             policies.BalancedPolicy(batch_size=1),
-        ][: max(0, self._num_variants)]
+        ]
+        if cap is not None:
+            # Keep the established one-probe candidate first when another slot
+            # remains. A one-candidate budget must retain the derived prefix.
+            position = 1 if cap == 1 and self._num_variants > 1 else 0
+            variants.insert(position, policies.PrefixPolicy(incumbent, cap))
+        variants = variants[: max(0, self._num_variants)]
+        if type(incumbent) not in supported:
+            return variants
+        while isinstance(incumbent, policies.PrefixPolicy):
+            incumbent = incumbent.policy
+        if type(incumbent) not in supported:
+            return variants
         incumbent_type = type(incumbent).__name__
 
         for i in range(max(0, self._num_variants - len(variants))):

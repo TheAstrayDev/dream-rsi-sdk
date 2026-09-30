@@ -43,8 +43,9 @@ and want to experiment with how their search branches, batches work, and stops.
 The core has no dependency on a model provider or agent framework.
 
 **Alpha means a working foundation, not a complete reproduction of the paper.**
-The default optimizer first replays a small portfolio of built-in branching and
-stopping policies, then uses any remaining candidate slots for parameter tuning.
+The default optimizer derives shorter prefixes of the incumbent policy from
+recorded replay, alongside a bounded portfolio of built-in branching and stopping
+policies. Synthesis makes no model requests; candidates still require validation.
 `LLMPolicyDeveloper` can instead
 revise executable policy source through your model client and measured replay feedback.
 Its lightweight interpreter needs no Docker and supports a restricted SDK language.
@@ -54,7 +55,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.2.0a3` · APIs may change |
+| Version | `0.2.0a4` · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
 | Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
 
@@ -131,7 +132,29 @@ policy, not model weights. Neither experiment reproduces the published
 Dream-RSI benchmarks, and neither demonstrates generalization to arbitrary
 agents or task families.
 
-## What's new in 0.2.0a3
+## What's new in 0.2.0a4
+
+The replay optimizer can derive `PrefixPolicy`: run the incumbent's original
+decisions for the earliest common number of complete rounds that preserves
+raw quality on the recorded training worlds, then stop. This works with built-in,
+custom and executable source policies without asking an LLM to write a stopping
+rule. Prefix policies retain complete batches and can be saved in checkpoints
+and portable bundles using the appropriate nested policy codec.
+
+Independent holdout checks remain essential: a plateau in recorded history does
+not guarantee that a future task has no later improvement. The original replay
+objective and cost/quality promotion gate remain in place. Source-development
+eligibility also accounts for root-branch order when estimating the minimum
+number of probes needed to reach a recorded result.
+
+Set `DreamRSIConfig(optimizer_prefix_search=False)` to keep the earlier
+portfolio. Prefix bundles require SDK **0.2.0a4 or newer**; existing trees and
+older policy bundles remain supported. Start a new campaign when upgrading
+from an older checkpoint configuration. See the
+[0.2.0a4 release notes](docs/releases/0.2.0a4.md) and
+[prefix guide](docs/replay-prefix.md) for usage and the exact quality guarantee.
+
+### Earlier 0.2.0a3 changes
 
 Discovery trees now snapshot each attempt's state, observation and diagnostics
 when the node is added. Later mutations by an agent cannot silently rewrite
@@ -190,7 +213,7 @@ is listed above.
 You need **Python 3.11+**. Install the alpha from PyPI in your virtual environment:
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a3
+python -m pip install --upgrade dreamrsi==0.2.0a4
 ```
 
 The same package includes the Python API and `dreamrsi` command. GitHub CLI (`gh`)

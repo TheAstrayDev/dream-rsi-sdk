@@ -50,9 +50,9 @@ class DefaultMethod:
     def _has_replay_opportunity(world, trajectory, quality_metric, incumbent_quality):
         """Optimistic bound on quality or probe gains in a recorded world.
 
-        Reaching a node costs at least its depth in recorded probes. Root
-        branch ordering can cost more, so this bound may allow a futile search,
-        but must never reject a feasible replay improvement.
+        Reaching depth d on root branch b costs at least b + d - 1 probes:
+        earlier root branches must be opened first. Extra rollout constraints
+        can only increase that cost. Unknown evidence leaves search eligible.
         """
         from dreamrsi.views import revealed_context
 
@@ -62,6 +62,18 @@ class DefaultMethod:
         observations = revealed_context(world.tree, {node.id for node in nodes})[
             "observations"
         ]
+        minimum_probes = {world.tree.root_id: 0}
+        for index, node in enumerate(world.tree.get_root_children(), 1):
+            minimum_probes[node.id] = index
+        for node in nodes:
+            if node.id not in minimum_probes:
+                parent_cost = minimum_probes.get(node.parent_id)
+                if parent_cost is None:
+                    return True
+                minimum_probes[node.id] = parent_cost + 1
+        incumbent_attempts = max(
+            trajectory.total_probes, sum(len(step.batch) for step in trajectory.steps)
+        )
         for node in nodes:
             try:
                 quality = (
@@ -81,9 +93,10 @@ class DefaultMethod:
                 or not math.isfinite(quality)
             ):
                 return True
-            if quality + 1e-9 >= incumbent_quality and node.depth < trajectory.total_probes:
+            needed = minimum_probes[node.id]
+            if quality + 1e-9 >= incumbent_quality and needed < incumbent_attempts:
                 return True
-            if quality > incumbent_quality + 1e-9 and node.depth <= trajectory.total_probes:
+            if quality > incumbent_quality and needed <= incumbent_attempts:
                 return True
         return False
 
@@ -341,6 +354,8 @@ class DefaultMethod:
                 cheap = DeterministicPolicyOptimizer(
                     num_variants=runtime._config.optimizer_variants,
                     seed=runtime._config.random_seed,
+                    quality_metric=getattr(runtime.validation, "quality_metric", None),
+                    prefix_search=runtime._config.optimizer_prefix_search,
                 )
                 try:
                     variants = await cheap.generate(

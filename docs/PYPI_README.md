@@ -6,25 +6,33 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a3**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.2.0a4**.
 
 ## Install
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a3
+python -m pip install --upgrade dreamrsi==0.2.0a4
 ```
 
 The package includes the Python API and the `dreamrsi` command. Publishing policy
 packages to GitHub additionally requires GitHub CLI (`gh`).
 
-## New in 0.2.0a3
+## New in 0.2.0a4
 
-Discovery trees snapshot attempt data as nodes are added, so later agent-side
-mutations cannot rewrite recorded observations. The free replay optimizer now
-tests several branching and stopping policies before parameter tweaks. A
-deterministic regression tree shows the same recorded quality with one attempted
-expansion instead of three; unseen-task savings still require independent validation.
-See the [release notes](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/releases/0.2.0a3.md).
+The replay optimizer can synthesize a shorter `PrefixPolicy` without model
+requests: preserve the incumbent's original decisions and complete batches
+until every training world's full raw quality has been reached, then stop.
+Nested source policies, checkpoints and portable bundles are supported.
+Independent holdout validation is still required; recorded quality does not
+guarantee generalization. The original replay objective remains unchanged.
+
+Disable proposals with `DreamRSIConfig(optimizer_prefix_search=False)`.
+Developer eligibility now accounts for root-branch ordering when bounding
+recorded probe cost. Prefix bundles need 0.2.0a4 or newer; existing trees and
+older policy bundles remain readable. Start a new campaign for checkpoints
+created with the older runtime configuration. See the
+[release notes](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/releases/0.2.0a4.md)
+and [prefix guide](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/main/docs/replay-prefix.md).
 
 ## Third-party policy and replay packages
 

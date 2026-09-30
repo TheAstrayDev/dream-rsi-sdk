@@ -35,6 +35,11 @@ Bonsai reports retain their original settings and are not results for this new c
 
 ## Source development
 
+Before calling a source developer, the default cheap search can now distil a
+quality-preserving incumbent replay prefix without model requests. See
+[replay prefix synthesis and all-in accounting](replay-prefix.md) for the proof,
+independent validation requirements, and the switch that disables this search.
+
 ```python
 from dreamrsi import Budget, DreamRSI, LLMPolicyDeveloper
 

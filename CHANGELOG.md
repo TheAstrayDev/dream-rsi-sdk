@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0a4 — 2026-09-30
+
+- Derive a bounded incumbent prefix directly from recorded raw-quality replay
+  trajectories before spending model requests on a stopping rule. Preserve
+  original decisions and complete parallel batches until the stopping round.
+- Support nested built-in, custom and source prefix policies in policy codecs,
+  portable bundles and campaign checkpoints; custom policies need their codecs.
+- Add `DreamRSIConfig.optimizer_prefix_search` and standalone optimizer
+  `prefix_search` controls. Candidate limits and independent holdout gates remain.
+- Include root-branch order in the minimum recorded probe cost used to reject
+  futile source-development searches; unknown evidence remains eligible.
+- Cover raw-quality extraction, delayed-payoff rejection, source sandbox execution,
+  one-candidate budgets, bundle reuse and recovery with regression tests.
+
+Recorded prefix quality is not a guarantee for unseen tasks. Prefix bundles
+require 0.2.0a4 or newer. The runtime configuration fingerprint has changed:
+use a new campaign ID for older checkpoints; stored trees and older bundles
+remain readable. See the [release notes](docs/releases/0.2.0a4.md).
+
 ## 0.2.0a3 — 2026-09-28
 
 - Snapshot root and attempt payloads when adding discovery-tree nodes, preserving

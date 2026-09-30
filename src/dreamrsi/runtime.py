@@ -60,8 +60,11 @@ class DreamRSIConfig:
     promotion_min_improvement: float = 0.0
     default_batch_size: int = 4
     random_seed: int | None = None
+    optimizer_prefix_search: bool = True
 
     def __post_init__(self):
+        if type(self.optimizer_prefix_search) is not bool:
+            raise ConfigurationError("optimizer_prefix_search must be boolean")
         for name in (
             "replay_max_rounds",
             "optimizer_variants",
@@ -299,6 +302,8 @@ class DreamRSI:
         self._optimizer = DeterministicPolicyOptimizer(
             num_variants=self._config.optimizer_variants,
             seed=self._config.random_seed,
+            quality_metric=getattr(self.validation, "quality_metric", None),
+            prefix_search=self._config.optimizer_prefix_search,
         )
         return self._optimizer
 
