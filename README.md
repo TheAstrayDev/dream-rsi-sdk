@@ -57,7 +57,7 @@ Its lightweight interpreter needs no Docker and supports a restricted SDK langua
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
 | Version | `0.2.0a4` · APIs may change |
 | Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
-| Benchmark status | Real local LLM policy development verified on controlled tasks; no proven all-in win with an LLM discovery agent |
+| Benchmark status | Real local LLM policy development and discovery tested; no overall all-in quality/cost win |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
@@ -65,11 +65,12 @@ or evaluator calls. This is an executable mechanics demo, not an LLM performance
 
 ## What the experiments actually showed
 
-The two results below test different things. In the Bonsai experiment, a real
+The experiments below test different things. In the first Bonsai experiment, a real
 local model **wrote policy code**, while a deterministic Python fixture supplied
 task solutions. In the GPT-6 Luna experiment, the model **both solved the tasks
-and developed policies**. Their call counts must not be pooled or compared as
-if they measured the same resource.
+and developed policies**. In the latest Bonsai pilot, the model generated real
+candidate answers and the SDK derived stopping policies algorithmically. Their
+call counts must not be pooled or compared as if they measured the same resource.
 
 ### Bonsai Q2: code generation and reuse on a controlled fixture
 
@@ -127,10 +128,30 @@ selected sources first appear at history entries 2, 1 and 3 respectively.
 These counts describe this selected run, not a first-try success rate across
 all exploratory attempts. See the [protocol and sanitized data summary](docs/experiments/luna-xhigh-discovery-v1.md).
 
+### Bonsai Q2: real model answers and replay-derived stopping
+
+On September 30, 2026, `Ternary-Bonsai-27B-Q2_g64` through llama.cpp generated
+actual candidate answers for packing, low autocorrelation (LABS) and Lasso.
+Each category had one training task, one independent holdout and six fresh
+test tasks fixed before the run. The SDK recorded **new trees**, derived shorter
+prefixes of the initial policy without LLM developer calls, and reused accepted
+policies on the fresh tasks. No previous trees or learned champions were loaded.
+
+![Bonsai Q2 real-model pilot: all-in request counts and quality outcomes across three task categories](assets/bonsai-prefix-real-2026-09-30.png)
+
+Packing preserved raw quality on all six fresh tasks with **14 requests all-in**
+(eight preparation plus six deployment), versus **24** baseline requests:
+**41.7% fewer requests**. However, the fixed one-call control also preserved
+quality with only six requests, so this does **not** establish an advantage
+over that cheaper control. LABS lost quality on one task and failed the quality
+criterion. Lasso produced invalid answers and had no Dream-RSI deployment result.
+This is a limited packing result, **not an overall quality/cost win**. Dollar
+cost was not measured; request savings are not dollar savings.
+
 Replay itself makes no new model requests. The SDK changes the exploration
-policy, not model weights. Neither experiment reproduces the published
-Dream-RSI benchmarks, and neither demonstrates generalization to arbitrary
-agents or task families.
+policy, not model weights. These experiments do not reproduce the published
+Dream-RSI benchmarks or demonstrate generalization to arbitrary agents or
+task families.
 
 ## What's new in 0.2.0a4
 
