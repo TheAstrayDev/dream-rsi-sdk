@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
@@ -109,6 +110,7 @@ class AdaptivePolicyMemory:
             raise ConfigurationError("settings must be PolicyMemorySettings")
         self.settings = settings or PolicyMemorySettings()
         self.namespace = namespace
+        self._holdout_lock = asyncio.Lock()
 
     @staticmethod
     async def _allowed(rule: Any, *args: Any) -> bool:
@@ -136,24 +138,41 @@ class AdaptivePolicyMemory:
         return self._key(family) + ":reserved-holdouts"
 
     async def _reserve_holdouts(self, family: str, validation: HoldoutPipeline) -> None:
-        data = await self.store.get_checkpoint(self._holdout_key(family)) or {
-            "schema": 1,
-            "namespace": self.namespace,
-            "family": family,
-            "task_keys": [],
-        }
-        if (
-            data.get("schema") != 1
-            or data.get("namespace") != self.namespace
-            or data.get("family") != family
-            or not isinstance(data.get("task_keys"), list)
-        ):
-            raise PolicyError("Incompatible holdout reservation record")
         keys = [task_key(task) for task in validation.tasks]
-        if set(keys) & set(data["task_keys"]):
-            raise ConfigurationError("Validation task was reserved by an earlier improvement")
-        data["task_keys"].extend(keys)
-        await self.store.save_checkpoint(self._holdout_key(family), data)
+        checkpoint_key = self._holdout_key(family)
+        swap = getattr(self.store, "compare_and_swap_checkpoint", None)
+        # Built-in stores provide atomic compare-and-swap across their shared
+        # storage boundary. A legacy custom store still supports concurrent
+        # calls on this memory instance through the local lock.
+        async with self._holdout_lock:
+            while True:
+                expected = await self.store.get_checkpoint(checkpoint_key)
+                data = expected or {
+                    "schema": 1,
+                    "namespace": self.namespace,
+                    "family": family,
+                    "task_keys": [],
+                }
+                if (
+                    data.get("schema") != 1
+                    or data.get("namespace") != self.namespace
+                    or data.get("family") != family
+                    or not isinstance(data.get("task_keys"), list)
+                ):
+                    raise PolicyError("Incompatible holdout reservation record")
+                if set(keys) & set(data["task_keys"]):
+                    raise ConfigurationError(
+                        "Validation task was reserved by an earlier improvement"
+                    )
+                updated = {**data, "task_keys": [*data["task_keys"], *keys]}
+                if not callable(swap):
+                    await self.store.save_checkpoint(checkpoint_key, updated)
+                    return
+                swapped = await invoke(swap, checkpoint_key, expected, updated)
+                if type(swapped) is not bool:
+                    raise ConfigurationError("Checkpoint compare-and-swap must return boolean")
+                if swapped:
+                    return
 
     async def _worlds(self, family: str) -> list[dict]:
         data = await self.store.get_checkpoint(self._world_key(family))

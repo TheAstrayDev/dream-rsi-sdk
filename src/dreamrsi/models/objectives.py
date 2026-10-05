@@ -3,6 +3,8 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 @dataclasses.dataclass(frozen=True)
 class ObjectiveResult:
@@ -16,4 +18,5 @@ class ObjectiveResult:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.3.0b1 — Beta, 2026-10-05
+
+- Add opt-in `QualityContract` and `CertifiedPolicy`: retain the original search
+  and complete batches, stopping only at an attained sound quality bound.
+  Strict mode skips policy rewrites and repeated training; missing bounds keep
+  the original search. Existing empirical development remains available.
+- Select the actual returned answer by valid raw quality when configured,
+  including an evaluated initial candidate. Keep composite scores separate.
+- Add `EconomyPlan` with exact integer preparation limits, historical costs and
+  measured payback. Recalculate remaining preparation from actual deployment
+  spending and a persisted completed-task count before admitting each request.
+  Track preparation/deployment purposes and reported nested
+  provider calls through budgets and restored ledgers. Keep concurrent deployment
+  separate from an improvement task's preparation allowance.
+- Add finite sandbox presets, JSON profile save/load and a configurable bounded
+  cache of validated syntax trees. Each execution keeps fresh state and resource
+  checks; the balanced preset preserves existing defaults.
+- Isolate raw-quality callback records from stored observations, infer source
+  sandbox profiles through nested policies, and atomically reserve holdouts in
+  built-in stores. Legacy custom stores retain their existing interface.
+- Reject unsupported explicit artifact schemas while accepting existing v1 and
+  legacy payloads; serialize nested certified/source policies.
+- Export the public `PolicyDeveloper` protocol and add isolated installed-wheel
+  CI gates for the CLI, codecs and process sandbox on Linux and Windows.
+- Document Beta compatibility, the quality proof, all-in accounting and a
+  deterministic mechanics example. No new real-model speedup is claimed.
+- Include English PNG/SVG figures with curated engineering evidence and local
+  reproduction tools for sandbox timing, preparation headroom and exhaustive
+  runtime quality checks. Keep model benchmarks separate from these checks.
+
+This Beta prerelease keeps pre-release APIs explicit. Strict
+quality preservation depends on a correct task bound and matching reference
+configuration; it does not imply savings on every task. See the
+[Beta notes](docs/releases/0.3.0b1.md).
+
 ## 0.2.0a4 — 2026-09-30
 
 - Derive a bounded incumbent prefix directly from recorded raw-quality replay

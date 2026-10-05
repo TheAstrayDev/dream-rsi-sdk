@@ -1,0 +1,401 @@
+{
+  "schema": "dreamrsi.bonsai-structural-followup-figure.v1",
+  "date": "2026-10-05",
+  "model": {
+    "name": "Ternary-Bonsai-27B-Q2_g64",
+    "quantization": "Q2_g64",
+    "sha256": "59a45d1ecef702b14531b06d22949f33b25c1897da31a8c0b298e01e4d9138eb",
+    "backend": "local llama.cpp b11154 CUDA",
+    "gpu": "NVIDIA GeForce RTX 4070"
+  },
+  "manifest_sha256": "bbefba5925f5b2cd71f29c136c5dcad0db5a62c5213b153db5b3123059ced1fd",
+  "protocol": {
+    "task_family": "new exact rational Lasso coefficient answers, not lasso_tuning",
+    "source_worlds": 1,
+    "application_tasks": 8,
+    "deployment_tasks": 6,
+    "frozen_confirmation_tasks": 2,
+    "initial_memory_patterns": 0,
+    "original_calls_per_world": 2,
+    "developer_model_calls": 0,
+    "sampling": {
+      "temperature": 0.0,
+      "top_p": 1.0,
+      "top_k": 0,
+      "max_tokens": 3072,
+      "seed": 20261004
+    },
+    "reasoning_budget": 2048,
+    "original_timeout_s": 90,
+    "amended_timeout_s": 300,
+    "original_protocol_success": false,
+    "independent_transport_control_repeat_calls": 2,
+    "cold_oracle": "post-run exact diagnostics only; never supplied answers or memory",
+    "implementation_status": "isolated experiment using SDK QualityContract hooks; structural module is not in the installed SDK"
+  },
+  "costs": {
+    "baseline_matched_calls": 16,
+    "dream_preparation_calls": 2,
+    "dream_application_calls": 8,
+    "dream_all_in_calls": 10,
+    "control_overhead_calls": 2,
+    "all_actual_control_calls": 18,
+    "full_experiment_calls": 28,
+    "dream_tokens": 23102,
+    "matched_baseline_tokens": 36960,
+    "all_actual_control_tokens": null,
+    "dollar_roi": null,
+    "earlier_research_calls": 12,
+    "earlier_research_provenance": "previously recorded pilot/settings research; separate historical expense",
+    "dream_including_earlier_research_calls": 22
+  },
+  "quality": {
+    "dream_exact_optima": 6,
+    "baseline_exact_optima": 4,
+    "paired_non_degradation_after_control_recovery": true
+  },
+  "cases": [
+    {
+      "case": "deployment-1",
+      "dream_calls": 2,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "0",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": true,
+      "task": {
+        "matrix": [
+          [
+            "3",
+            "1"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "8",
+          "3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "13/5",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "13/5",
+        "0"
+      ],
+      "dream_used_memory": false
+    },
+    {
+      "case": "deployment-2",
+      "dream_calls": 0,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "0",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": true,
+      "task": {
+        "matrix": [
+          [
+            "2",
+            "1"
+          ],
+          [
+            "1",
+            "3"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "6",
+          "3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "14/5",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "14/5",
+        "0"
+      ],
+      "dream_used_memory": true
+    },
+    {
+      "case": "deployment-3",
+      "dream_calls": 0,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "75/187",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": false,
+      "task": {
+        "matrix": [
+          [
+            "4",
+            "1"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "9",
+          "2",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "37/17",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "25/11",
+        "-3/11"
+      ],
+      "dream_used_memory": true
+    },
+    {
+      "case": "deployment-4",
+      "dream_calls": 0,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "0",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": true,
+      "task": {
+        "matrix": [
+          [
+            "2",
+            "1"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "6",
+          "3",
+          "0"
+        ],
+        "lam": "2"
+      },
+      "dream_coefficients": [
+        "13/5",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "13/5",
+        "0"
+      ],
+      "dream_used_memory": true
+    },
+    {
+      "case": "deployment-5",
+      "dream_calls": 2,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "0",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": true,
+      "task": {
+        "matrix": [
+          [
+            "2",
+            "1"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "-6",
+          "-3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "-14/5",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "-14/5",
+        "0"
+      ],
+      "dream_used_memory": false
+    },
+    {
+      "case": "deployment-6",
+      "dream_calls": 2,
+      "baseline_calls": 2,
+      "dream_gap": "1363/180",
+      "baseline_gap": "1363/180",
+      "quality_preserved": true,
+      "dream_globally_optimal": false,
+      "baseline_globally_optimal": false,
+      "task": {
+        "matrix": [
+          [
+            "1",
+            "2"
+          ],
+          [
+            "2",
+            "1"
+          ],
+          [
+            "1",
+            "0"
+          ]
+        ],
+        "target": [
+          "6",
+          "3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "11/6",
+        "1/3"
+      ],
+      "baseline_coefficients": [
+        "11/6",
+        "1/3"
+      ],
+      "dream_used_memory": false
+    },
+    {
+      "case": "confirmation-1",
+      "dream_calls": 0,
+      "baseline_calls": 2,
+      "dream_gap": "0",
+      "baseline_gap": "4/7",
+      "quality_preserved": true,
+      "dream_globally_optimal": true,
+      "baseline_globally_optimal": false,
+      "task": {
+        "matrix": [
+          [
+            "3",
+            "1"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "0",
+            "1"
+          ]
+        ],
+        "target": [
+          "-8",
+          "-3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "-13/5",
+        "0"
+      ],
+      "baseline_coefficients": [
+        "-81/35",
+        "-4/7"
+      ],
+      "dream_used_memory": true
+    },
+    {
+      "case": "confirmation-2",
+      "dream_calls": 2,
+      "baseline_calls": 2,
+      "dream_gap": "4524/245",
+      "baseline_gap": "4524/245",
+      "quality_preserved": true,
+      "dream_globally_optimal": false,
+      "baseline_globally_optimal": false,
+      "task": {
+        "matrix": [
+          [
+            "1",
+            "3"
+          ],
+          [
+            "2",
+            "1"
+          ],
+          [
+            "1",
+            "0"
+          ]
+        ],
+        "target": [
+          "8",
+          "3",
+          "0"
+        ],
+        "lam": "1"
+      },
+      "dream_coefficients": [
+        "2/7",
+        "19/35"
+      ],
+      "baseline_coefficients": [
+        "2/7",
+        "19/35"
+      ],
+      "dream_used_memory": false
+    }
+  ],
+  "transport_failure": {
+    "stage": "baseline",
+    "case": "deployment-6",
+    "original_baseline_gap": "58/5",
+    "recovered_baseline_gap": "1363/180",
+    "unknown_usage_kept_unknown": true,
+    "original_record_preserved": true
+  },
+  "provenance": {
+    "audited_summary_sha256": "2f121130486c3b11286262b3dfb42ca06eb2f5de57934d8484a70f25b0ae9f83",
+    "primary_report_sha256": "0dbb50f4630170d7ff910b4a2703c02146252cc84fcf479df0e45a2740bf8ff7",
+    "recovery_report_sha256": "a3f378420f05d2021153a26247a7e4478cec5601d16d6150c40c06cf29edf25b",
+    "raw_logs_and_trees": "local only; not exported into this figure dataset"
+  }
+}

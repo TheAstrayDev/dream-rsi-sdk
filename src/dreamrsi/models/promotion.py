@@ -5,6 +5,8 @@ import enum
 import time
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 class PromotionOutcome(enum.StrEnum):
     PROMOTED = "PROMOTED"
@@ -30,6 +32,7 @@ class PromotionDecision:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "outcome" in d:
             d["outcome"] = PromotionOutcome(d["outcome"])

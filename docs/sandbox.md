@@ -6,7 +6,49 @@ strategy templates. The interpreter accepts a Python syntax subset, not arbitrar
 Python programs. `PolicySandbox.capabilities()` describes the active profile sent to
 the policy developer.
 
-## Configure a profile
+## Start with one line
+
+```python
+from dreamrsi import PolicySandbox, ProcessPolicySandbox, SandboxConfig
+
+sandbox = PolicySandbox.from_preset("balanced")
+# Give larger programs more resources without enabling host access:
+worker = ProcessPolicySandbox.from_preset("large", max_steps=2_000_000)
+```
+
+`small`, `balanced` and `large` choose finite resource limits. Every preset enables
+all implemented language features: helpers, comprehensions, collection methods and
+the pure math proxy. `balanced` is exactly the existing default, so this release does
+not silently tighten old programs. Presets can be overridden per limit or allowlist.
+
+| Resource | `small` | `balanced` | `large` |
+| --- | ---: | ---: | ---: |
+| Interpreter steps | 10,000 | 100,000 | 1,000,000 |
+| Items per value | 2,000 | 20,000 | 100,000 |
+| Cumulative value units | 200,000 | 2,000,000 | 20,000,000 |
+| Source bytes | 32,768 | 131,072 | 1,048,576 |
+| AST nodes | 4,000 | 16,000 | 64,000 |
+| Value depth | 32 | 48 | 64 |
+| Integer bits | 256 | 512 | 1,024 |
+| Call depth | 16 | 32 | 64 |
+
+## Save and reuse configuration
+
+```python
+SandboxConfig.preset("large", max_steps=2_000_000).save("sandbox.json")
+sandbox = PolicySandbox.from_file("sandbox.json")
+# The same profile also works with the killable worker:
+worker = ProcessPolicySandbox.from_file("sandbox.json", max_steps=3_000_000)
+```
+
+`save()` returns the absolute path and refuses an existing file unless you explicitly
+pass `overwrite=True`. `SandboxConfig.load(path)`, `to_json()` and `from_json(text)`
+also work directly. Unknown fields, unsupported function names and invalid limits
+fail during profile loading. JSON stores the effective limits, rather than a preset
+name whose defaults might change. These are host-side configuration APIs; generated
+policy code cannot read or write files.
+
+## Configure individual permissions
 
 ```python
 from dreamrsi import PolicySandbox, SandboxConfig
@@ -55,6 +97,51 @@ For automatically generated candidates, set `DeveloperConfig(policy_timeout_s=5)
 This decision deadline is independent of `model_timeout_s`, which limits the model
 request. The policy deadline survives source-policy serialization and developer resume.
 
+## Repeated replay without repeated parsing
+
+Inline `PolicySandbox` caches up to **16 validated syntax trees** by exact source and
+immutable configuration. Every decision still creates a fresh interpreter, copies
+the JSON view, and applies the original operation, value and time limits. The cache
+contains no observations, decisions, module variables or policy state. Public
+`parse()` returns an independent tree, so changing it cannot alter cached execution.
+Malformed source is never cached, and a source/profile change is validated again.
+
+```python
+sandbox = PolicySandbox.from_preset("balanced", cache_size=32)
+print(sandbox.cache_info())  # capacity, entries, hits, misses
+sandbox.clear_cache()
+# Disable it for comparisons or extremely memory-constrained applications:
+uncached = PolicySandbox(cache_size=0)
+```
+
+Capacity is an entry count, not an RSS quota; retained source and AST sizes are also
+bounded by the configured source and AST limits. Cache settings do not change the
+language profile or portable policy compatibility.
+
+For `N` uses of unchanged source, let `P` be parsing/validation time and `E` be execution
+time. Ignoring cache-lookup overhead and without eviction, the work changes from
+`N(P + E)` to `P + NE`: the asymptotic speedup is `1 + P/E`, while the executed policy
+and fresh state remain the same.
+
+A local deterministic check on 2026-10-04 used the existing `balanced_source.py`,
+seven alternating paired samples of 1,000 decisions, and identical results in both
+modes. Median timings per 1,000 decisions:
+
+| View | Cache disabled | Cache enabled | Speedup |
+| --- | ---: | ---: | ---: |
+| One frontier node | 0.409 s | 0.141 s | **2.90x** |
+| Eight frontier nodes | 0.971 s | 0.689 s | **1.41x** |
+| Terminal, empty frontier | 0.265 s | 0.033 s | **8.01x** |
+
+These are interpreter timings, not a real-model benchmark, LLM request reduction or
+a universal campaign speedup. Larger views spend more time in copying, ranking and
+execution, reducing the benefit.
+
+![Cache-off and cache-on timings: medians and all seven paired samples](../assets/beta-sandbox-performance.png)
+
+The [verification record](verification/0.3.0b1.md) contains the frozen measurements
+and commands for reproducing the figures or measuring your own machine.
+
 ## Execution backends
 
 `PolicySandbox` executes in the caller's process. It is the low-overhead default for
@@ -89,6 +176,8 @@ an OS filesystem/network sandbox and does not install OS memory quotas. Host acc
 is still excluded by the interpreter's allowlist. Arbitrary Python, host imports,
 files, sockets and subprocess creation remain unavailable to generated code in both
 backends. Trusted handwritten policies and agent callbacks are separate application code.
+The process backend intentionally starts a fresh worker each time, so its parent-side
+AST cache does not remove worker startup or provide the inline speedup above.
 
 ## Language and observations
 

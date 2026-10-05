@@ -6,6 +6,8 @@ import time
 import uuid
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 class ReplayOutcomeSource(enum.StrEnum):
     RECORDED = "RECORDED"
@@ -34,6 +36,7 @@ class ReplayWorldRecord:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "split" in d:
             d["split"] = WorldSplit(d["split"])
@@ -55,6 +58,7 @@ class ReplayStep:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})
 
 
@@ -84,6 +88,7 @@ class ReplayTrajectory:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "steps" in d:
             d["steps"] = [ReplayStep.from_dict(s) for s in d["steps"]]

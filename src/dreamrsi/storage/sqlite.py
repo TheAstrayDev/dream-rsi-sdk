@@ -104,5 +104,23 @@ class SQLiteStore:
     async def get_checkpoint(self, campaign_id):
         return self._get("checkpoint", campaign_id)
 
+    async def compare_and_swap_checkpoint(self, campaign_id, expected, data):
+        """Atomically compare JSON values and update across SQLite connections."""
+        payload = json.dumps(data, allow_nan=False, ensure_ascii=False)
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            if self._get("checkpoint", campaign_id) != expected:
+                self.connection.rollback()
+                return False
+            self.connection.execute(
+                "INSERT OR REPLACE INTO records VALUES (?,?,?)",
+                ("checkpoint", campaign_id, payload),
+            )
+            self.connection.commit()
+            return True
+        except BaseException:
+            self.connection.rollback()
+            raise
+
     async def close(self):
         self.connection.close()

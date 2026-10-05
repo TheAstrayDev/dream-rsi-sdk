@@ -4,6 +4,8 @@ import dataclasses
 import math
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 @dataclasses.dataclass(frozen=True)
 class Budget:
@@ -17,8 +19,8 @@ class Budget:
     max_depth: int | None = None
     max_parallelism: int | None = None
     max_rounds: int | None = None
-    # One logical agent attempt or policy-developer request counts as one.
-    # Provider-reported token/USD usage remains the source for monetary limits.
+    # Sum reported provider calls, with a one-call floor per agent/developer dispatch.
+    # Hard admission requires ceilings for nested requests; token/USD caps use reports.
     total_llm_calls: int | None = None
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
@@ -71,4 +73,5 @@ class Budget:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})

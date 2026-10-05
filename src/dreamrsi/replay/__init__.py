@@ -32,6 +32,24 @@ from dreamrsi.models.replay import ReplayStep, ReplayTrajectory
 from dreamrsi.views import revealed_context
 
 
+def _recorded_stage_calls(node: DiscoveryNode, stage: str) -> tuple[int, int] | None:
+    """Read a revealed node's dispatch/provider counts; None means legacy data."""
+    if "usage" not in node.metadata:
+        return None
+    usage = node.metadata["usage"]
+    if not isinstance(usage, dict):
+        raise ReplayError("Recorded usage must be a mapping")
+    if stage not in usage:
+        return 0, 0
+    record = usage[stage]
+    if not isinstance(record, dict):
+        raise ReplayError("Recorded stage usage must be a mapping")
+    providers = record.get("provider_calls", 0)
+    if type(providers) is not int or providers < 0:
+        raise ReplayError("Recorded provider calls must be a nonnegative integer")
+    return 1, providers
+
+
 class ReplayWorld:
     """A committed discovery tree wrapped as a replayable simulator.
 
@@ -97,8 +115,12 @@ class StrictReplay:
         still consume a model call when the policy is deployed live.
     budget : Budget, optional
         Logical rollout limits: revealed probes, nodes, depth, workers and rounds.
-        Model/evaluator calls each count one per revealed probe. Provider billing
-        and live wall time cannot be simulated. Empty boundaries cost a round only.
+        Evaluator limits include recorded initial evaluation and actual recorded
+        dispatches. Total LLM calls use revealed provider usage with a one-call
+        agent floor; legacy nodes retain one call per probe. These are postdispatch
+        observations, not a prediction of hidden provider costs. Provider prices
+        and live wall time cannot be simulated. Empty boundaries cost a round only
+        in revealed mode, or one logical call in attempted mode.
     """
 
     def __init__(
@@ -128,7 +150,7 @@ class StrictReplay:
         self.max_parallelism = max_parallelism
         self.budget = budget or Budget()
         # Replay simulates recorded probes, not provider billing or elapsed live time.
-        for name in ("developer_calls", "total_llm_calls", "tokens", "usd", "wall_time_s"):
+        for name in ("developer_calls", "tokens", "usd", "wall_time_s"):
             if getattr(self.budget, name) is not None:
                 raise ValueError(f"Replay cannot simulate {name}; use logical probe limits")
 
@@ -186,6 +208,17 @@ class StrictReplay:
         # Track best score
         root = tree.get_node(tree.root_id)
         best_score: float | None = root.score if root else None
+        initial_evaluator_calls = (
+            root.metadata.get(
+                "initial_evaluator_calls", int("evaluation" in root.metadata)
+            )
+            if root else 0
+        )
+        if type(initial_evaluator_calls) is not int or initial_evaluator_calls not in (0, 1):
+            raise ReplayError("Initial evaluator charge must be 0 or 1")
+        initial_usage = _recorded_stage_calls(root, "evaluator") if root else None
+        evaluator_calls = initial_evaluator_calls
+        total_llm_calls = initial_usage[1] if initial_usage is not None else 0
         probes = 0
         attempted = 0
         last_round = None
@@ -213,12 +246,16 @@ class StrictReplay:
                 max_parallelism=self._workers(),
             ).remaining(Budget(
                 model_calls=attempted if self.score_cost == "attempted" else probes,
-                evaluator_calls=attempted if self.score_cost == "attempted" else probes,
+                evaluator_calls=evaluator_calls,
+                total_llm_calls=total_llm_calls,
                 max_nodes=len(revealed),
                 max_rounds=round_num - 1,
             ))
             slots = self._workers()
-            for cap in (remaining.model_calls, remaining.evaluator_calls, remaining.max_nodes):
+            for cap in (
+                remaining.model_calls, remaining.evaluator_calls, remaining.max_nodes,
+                remaining.total_llm_calls,
+            ):
                 if cap is not None:
                     slots = min(slots, cap)
             if slots <= 0 or not view.frontier:
@@ -245,11 +282,20 @@ class StrictReplay:
                 child = world.get_child(node_id, revealed)
                 if child is None:
                     # Replay boundary — no more recorded transitions
+                    if self.score_cost == "attempted":
+                        evaluator_calls += 1
+                        total_llm_calls += 1
                     continue
 
                 revealed.add(child.id)
                 revealed_this_round.append(child.id)
                 probes += 1
+                agent_usage = _recorded_stage_calls(child, "agent")
+                evaluator_usage = _recorded_stage_calls(child, "evaluator")
+                evaluator_calls += evaluator_usage[0] if evaluator_usage is not None else 1
+                total_llm_calls += (
+                    max(agent_usage) if agent_usage is not None else 1
+                ) + (evaluator_usage[1] if evaluator_usage is not None else 0)
 
                 # Update best score
                 if child.score is not None and (best_score is None or child.score > best_score):
@@ -311,10 +357,17 @@ class StrictReplay:
             "max_rounds": round_limit,
             "max_parallelism": self._workers(),
             "budget": self.budget.to_dict(),
+            "initial_evaluator_calls": initial_evaluator_calls,
+            "evaluator_calls": evaluator_calls,
+            "total_llm_calls": total_llm_calls,
+            "provider_budget_accounting": (
+                "revealed recorded provider usage, agent dispatch floor, initial evaluator usage; "
+                "legacy/boundary logical calls, no hidden-cost lookahead or price simulation"
+            ),
             "budget_accounting": (
-                "one logical model/evaluator call per attempted expansion"
+                "one logical model call per attempted expansion; recorded evaluator dispatches"
                 if self.score_cost == "attempted"
-                else "one logical model/evaluator call per revealed probe"
+                else "one logical model call per revealed probe; recorded evaluator dispatches"
             ),
         }
 

@@ -41,6 +41,26 @@ jobs:
       - run: python -m pyright
       - run: python -m build
       - run: python -m twine check --strict dist/*
+      - name: Verify installed wheel before publication
+        shell: python {0}
+        run: |
+          import os
+          import subprocess
+          import sys
+          import venv
+          from pathlib import Path
+
+          checkout = Path.cwd()
+          environment = Path(os.environ["RUNNER_TEMP"]) / "dreamrsi-publish-wheel"
+          venv.create(environment, with_pip=True)
+          executable = environment / "bin/python"
+          wheel, = checkout.glob("dist/*.whl")
+          subprocess.run([
+              str(executable), "-m", "pip", "install", "--no-deps", str(wheel)
+          ], check=True)
+          subprocess.run([
+              str(executable), "-I", str(checkout / "tests/test_installed_wheel.py")
+          ], cwd=os.environ["RUNNER_TEMP"], check=True)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: python-distributions

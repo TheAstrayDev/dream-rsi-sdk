@@ -1,20 +1,21 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Dream-RSI SDK Alpha — independent exploration-policy SDK" width="100%">
+  <img src="assets/banner.png" alt="Dream-RSI SDK Beta — independent exploration-policy SDK" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/TheAstrayDev/dream-rsi-sdk/actions/workflows/ci.yml"><img src="https://github.com/TheAstrayDev/dream-rsi-sdk/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/status-alpha-eebc73?style=flat-square" alt="Alpha">
+  <img src="https://img.shields.io/badge/status-beta-75e0be?style=flat-square" alt="Beta prerelease">
   <img src="https://img.shields.io/badge/Python-3.11%2B-75e0be?style=flat-square" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/runtime_dependencies-0-75e0be?style=flat-square" alt="Zero runtime dependencies">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-c3d0d4?style=flat-square" alt="Apache 2.0"></a>
 </p>
 
-<p align="center"><strong>Bring your agent. Record its search. Replay alternative exploration strategies.</strong></p>
+<p align="center"><strong>Bring your agent. Preserve verified quality. Account for every model request.</strong></p>
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="#architecture">How it works</a> ·
   <a href="#package-cli">Package sharing</a> ·
+  <a href="#latest-real-model-result">Latest local result</a> ·
   <a href="#comparison">Research comparison</a> ·
   <a href="#roadmap">Roadmap</a> ·
   <a href="docs/integration.md">Integration guide</a>
@@ -42,200 +43,213 @@ It is designed for developers who already have a **generate → evaluate → ref
 and want to experiment with how their search branches, batches work, and stops.
 The core has no dependency on a model provider or agent framework.
 
-**Alpha means a working foundation, not a complete reproduction of the paper.**
-The default optimizer derives shorter prefixes of the incumbent policy from
+**Version 0.3.0b1 adds opt-in quality protection and complete call accounting.**
+With a `QualityContract`, the strict mode preserves the original search and stops
+only after attaining a mathematically sound quality bound. Without that contract,
+the default optimizer derives shorter prefixes of the incumbent policy from
 recorded replay, alongside a bounded portfolio of built-in branching and stopping
 policies. Synthesis makes no model requests; candidates still require validation.
 `LLMPolicyDeveloper` can instead
 revise executable policy source through your model client and measured replay feedback.
 Its lightweight interpreter needs no Docker and supports a restricted SDK language.
+Beta is an SDK maturity milestone, not a complete reproduction of the paper or
+evidence of a universal speedup.
 
 | At a glance | Current state |
 | :--- | :--- |
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.2.0a4` · APIs may change |
-| Distribution | [PyPI](https://pypi.org/project/dreamrsi/) · source · GitHub installation |
-| Benchmark status | Real local LLM policy development and discovery tested; no overall all-in quality/cost win |
+| Version | `0.3.0b1` · Beta prerelease |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.3.0b1/) · install the Beta with `--pre` |
+| Benchmark status | Narrow Bonsai Q2 Lasso follow-up: 37.5% fewer fresh-campaign calls with paired quality preserved after control recovery; broader economics unverified |
 
 **Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
 search and compare three policies. It reports whether replay caused any additional agent
 or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
 
+## What's new 0.3.0b1
+
+- **Quality contracts:** preserve the original search and select the best valid raw-quality answer; stop only at a sound attained bound.
+- **All-in budgets:** dynamic preparation limits include historical spending, actual deployment, reported nested calls and failed requests.
+- **Sandbox profiles:** Docker-free presets, JSON settings and a bounded validated-code cache with fresh execution state.
+- **Reliable reuse:** atomic holdout reservations, isolated callback inputs and restored sandbox profiles.
+- **Beta compatibility:** public `PolicyDeveloper`, schema guards, legacy loaders and installed-wheel CLI/process checks.
+
+![Quality protection: keep the original search, retain the best answer, stop only at a proven quality bound](assets/quality-guard.svg)
+
+**Quality and cost are separate constraints.** A recorded plateau can miss a later
+improvement. The new strict mode retains the original policy's decisions and complete
+batches, selects the answer with the best valid **raw quality**, and stops only when
+that quality exactly reaches a proven task maximum. Unknown bounds continue the
+original search. Learned fixed caps cannot silently replace it.
+
+```python
+from dreamrsi import Budget, DreamRSI, EconomyPlan, QualityContract
+
+rsi = DreamRSI(
+    agent=my_agent,
+    evaluator=my_evaluator,          # Score is raw quality in this example.
+    policy=my_baseline_policy,
+    budget=Budget(model_calls=4),
+    quality=QualityContract(id="exact-task-quality-v1", upper_bound=1.0),
+    economy=EconomyPlan(baseline_calls_per_task=4, horizon=6),
+)
+result = await rsi.run(task)
+print(result.metrics["raw_quality"])
+```
+
+Supply your application's agent, evaluator and original policy. **Use `1.0` only
+when it is a proven upper bound for every feasible answer**, not the highest score
+seen in training. Custom raw-quality extractors and locally computed task bounds
+are supported. Strict protection needs no policy-development calls. An optional
+initial candidate is evaluated, retained and charged normally.
+
+For a full-search comparison, use the same contract with `certified_stopping=False`.
+This keeps the same quality metadata and initial evaluation in both arms. The
+no-loss argument compares the same response trajectory under matching limits;
+independent stochastic runs and differing wall-time cutoffs need empirical checks.
+
+The exact conditions are `q(best) = U` for stopping and
+`preparation < Σ(baseline_calls − deployment_calls)` for strict all-in savings.
+`EconomyPlan` recalculates the remaining preparation allowance before every request:
+
+```text
+remaining = max(0, H*B - 1 - historical - preparation - deployment - max(0, H-done)*m)
+```
+
+Here `H` is the fixed task horizon, `B` the baseline calls per task, and `m` the
+declared minimum calls per unfinished task. Actual spending replaces optimistic
+estimates as tasks finish. For a six-task, four-call baseline, two preparation
+calls and eight deployment calls across two tasks leave **9** additional
+preparation calls, rather than the old static allowance of 15. This prevents six
+unaffordable requests; it is not a measured six-call improvement in model quality.
+
+![Dynamic preparation allowance: nine affordable additional calls instead of fifteen](assets/beta-preparation-headroom.png)
+
+The ledger separately counts preparation and deployment,
+including reported nested provider calls, failed requests and retries. Unknown
+token or dollar costs remain unknown. Full search may exceed an optimistic savings
+target; the SDK does not sacrifice quality to make that target appear successful.
+
+Set `preserve_policy=False` on the quality contract to allow experimental policy
+rewrites with replay and holdout checks. Those checks supply empirical evidence,
+not a universal guarantee. Applications without a quality contract keep their
+existing policy-development behavior.
+
+**Configure the sandbox in one line**, without Docker:
+
+```python
+from dreamrsi import PolicySandbox, SandboxConfig
+
+sandbox = PolicySandbox.from_preset("large", max_steps=2_000_000)
+SandboxConfig.preset("large").save("sandbox.json")
+sandbox = PolicySandbox.from_file("sandbox.json")
+```
+
+Every preset keeps all supported language features. A bounded cache reuses validated
+code, while observations, execution state and limits remain fresh. A local paired
+test measured **2.90x** faster decisions with one frontier node and **1.41x** with
+eight. These are interpreter timings, not LLM call savings. Profiles, overrides,
+cache controls and the killable process backend are described in the
+[sandbox guide](docs/sandbox.md).
+
+![Paired interpreter timings with and without the validated-code cache](assets/beta-sandbox-performance.png)
+
+**The quality invariant was also checked through the actual SDK runtime.** All
+243 finite deterministic cases returned the same raw quality as a full reference;
+195 stopped before the fourth agent call. Both arms charged the same initial local
+evaluation. These logical callback counts are engineering checks, not paid model
+measurements or a new all-in LLM result.
+
+![Identical raw quality in 243 deterministic SDK cases, with fewer logical calls after certification](assets/beta-quality-preservation.png)
+
+Beta also adds isolated raw-quality callback inputs, atomic holdout reservations
+in built-in stores, correct sandbox recovery for wrapped source policies,
+explicit artifact-schema rejection, a public `PolicyDeveloper`
+protocol, backward-compatibility tests and isolated installed-wheel checks for
+the CLI, source codecs and process sandbox. The engineering roadmap is covered
+below; research-scale performance remains a separate validation task.
+
+[Quality contract and proof](docs/quality-contract.md) ·
+[All-in accounting](docs/all-in.md) ·
+[Compatibility](docs/compatibility.md) ·
+[Beta release notes](docs/releases/0.3.0b1.md) ·
+[Figure data and reproducibility](docs/verification/0.3.0b1.md) ·
+[Runnable mechanics demo](examples/17_certified_quality.py)
+
 ## What the experiments actually showed
 
-The experiments below test different things. In the first Bonsai experiment, a real
-local model **wrote policy code**, while a deterministic Python fixture supplied
-task solutions. In the GPT-6 Luna experiment, the model **both solved the tasks
-and developed policies**. In the latest Bonsai pilot, the model generated real
-candidate answers and the SDK derived stopping policies algorithmically. Their
-call counts must not be pooled or compared as if they measured the same resource.
+The latest record below uses real local model answers and an isolated structural-transfer prototype. It separates fresh-campaign savings, control recovery and historical expenses.
 
-### Bonsai Q2: code generation and reuse on a controlled fixture
+<a id="latest-real-model-result"></a>
+### Latest local follow-up: Bonsai Q2 structural dreams
 
-`Ternary-Bonsai-27B-Q2_g64` ran locally through llama.cpp. The experiment fixed
-two training tasks, two separate validation tasks, and 64 fresh tasks before
-policy generation. The SDK recorded the training trees, asked Bonsai to revise
-an executable policy from replay feedback, sandboxed the code, checked it on
-the held-out trees, and reused the accepted source on the fresh tasks. The
-accepted source was the **sixth model response**; the full record charges
-**eight developer request attempts**, including one rejected for context size.
+On **October 5, 2026**, local `Ternary-Bonsai-27B-Q2_g64` through llama.cpp ran
+one new preparation task and eight new **two-feature Lasso** application tasks.
+The campaign started with empty memory; previous trees and champions were
+inaccessible to the runner. Six application tasks could develop memory, followed
+by two tasks using physically saved, reloaded and frozen memory.
 
-| Across 64 fresh tasks | Fixed policy | Bonsai-written policy path |
+![Bonsai Q2 recovered control comparison: 10 versus 16 calls, six versus four exact optima, and separate historical research costs](assets/bonsai-structural-dream-2026-10-05.png)
+
+| Recovered matched comparison, eight application tasks | Baseline | Experimental Dream path |
 | :--- | ---: | ---: |
-| Preparation, including training, developer and validation | 0 | 24 logical operations |
-| Fresh-task deployment | 256 | 224 logical operations |
-| **Full path** | **256** | **248** |
-| Raw quality on every fresh task | 0.9 | 0.9 |
+| Preparation model calls | 0 | 2 |
+| Application model calls | 16 | 8 |
+| **Fresh-campaign total** | **16** | **10** |
+| Matched input + output tokens | 36,960 | 23,102 |
+| Exact global optima | 4/8 | **6/8** |
+| Paired raw quality | Reference | Equal or better on all 8 tasks |
 
-![Bonsai Q2 on a deterministic branch fixture: 256 versus 248 counted operations at equal quality](assets/ternary-bonsai-diverse-local.png)
+The fresh campaign used **37.5% fewer calls**, with preparation included. Four
+application tasks required zero LLM calls. Their answers came from a locally
+solved active-support/sign pattern extracted from this campaign's own recorded
+answers, accepted only after exact rational KKT checks. Incompatible patterns
+triggered the original two-call model policy. The model generated the preparation
+and fallback answers; local transfer did not update model weights or ask the
+model to write executable policy code.
 
-This is a **3.125% reduction in the fixture's counted-operation proxy**, with
-preparation included. The eight developer requests were real local model calls;
-the discovery-agent operations were scripted, not LLM requests. The result
-demonstrates policy writing, replay-guided revision, validation and reuse. It
-does not establish a token, dollar or time saving for an LLM discovery agent.
-The policy still uses fixed score thresholds and was tested on a narrow branch
-family. See the [frozen protocol and audit](docs/experiments/ternary-bonsai-diverse-2026-09-24.md).
+**This is follow-up evidence after a transport failure.** One baseline request
+timed out at 90 seconds. Remaining requests used a documented 300-second limit,
+and the affected baseline task was checked separately with two additional calls.
+The original report was retained and its preregistered success flag remains false.
+The complete experiment consumed **28 actual calls: 10 Dream, 16 primary control
+and 2 separate control-repeat calls**. The matched comparison uses the completed
+repeat for that one task; the two originally affected control calls remain
+charged as overhead. Their full token usage is unknown, as is dollar ROI.
 
-### GPT-6 Luna xhigh: real model agent, costly preparation
+**Historical research is still an expense.** Adding 12 earlier pilot/settings
+calls gives 22 Dream-side calls against this series's 16-call matched baseline.
+Those earlier costs have not yet paid back. Fresh-campaign costs tie after the
+second application task and become lower after the third.
 
-In a separate exploratory v1 run, `gpt-6-luna` with `xhigh` reasoning and the
-Fast tier supplied **both** candidate answers and policy-code revisions. The
-run covered low autocorrelation, circle packing and Lasso tuning, with two
-held-out tasks per category. The SDK accepted a policy in each category. On
-those six tasks, deployment needed **one model answer per task**: **two per
-category**, compared with eight baseline answers per category.
+The structural transfer module is an **isolated experimental prototype using the
+SDK's quality hooks**, not a feature shipped in the installed package. Two Dream
+answers remain nonoptimal. A conventional exact solver can also solve these small
+Lasso tasks without an LLM; this comparison does not establish an advantage over
+that solver, an overall multi-category win, or readiness for a general Beta release.
+See the [conditions, exact errors and curated figure data](docs/verification/bonsai-structural-dream-2026-10-05.md).
 
-| Category, two test tasks each | Baseline calls | Dream-RSI deployment calls | Mean reported score, baseline → Dream-RSI |
-| :--- | ---: | ---: | ---: |
-| Low autocorrelation | 8 | **2** | 33.333% → 33.333% |
-| Circle packing | 8 | **2** | 85.496% → 85.496% |
-| Lasso tuning | 8 | **2** | 98.992% → 98.050% |
-| **Six-task total / mean** | **24** | **6** | **72.607% → 72.293%** |
-
-![GPT-6 Luna xhigh: 94 preparation requests and six deployment requests versus 24 baseline requests](assets/luna-xhigh-discovery-v1.png)
-
-The shorter deployments came after **70 training/validation requests and 24
-policy-development requests**. The complete Dream-RSI path therefore cost
-**94 + 6 = 100 model requests**, versus **24** for baseline. Reported mean
-quality was **0.314 percentage points lower**, mainly on Lasso, whose v1 score
-also includes a solver-update penalty. This is evidence that executable
-policies were learned and reused, **not an all-in economic or quality win**.
-The retained run contains eight developer requests per category; the final
-selected sources first appear at history entries 2, 1 and 3 respectively.
-These counts describe this selected run, not a first-try success rate across
-all exploratory attempts. See the [protocol and sanitized data summary](docs/experiments/luna-xhigh-discovery-v1.md).
-
-### Bonsai Q2: real model answers and replay-derived stopping
-
-On September 30, 2026, `Ternary-Bonsai-27B-Q2_g64` through llama.cpp generated
-actual candidate answers for packing, low autocorrelation (LABS) and Lasso.
-Each category had one training task, one independent holdout and six fresh
-test tasks fixed before the run. The SDK recorded **new trees**, derived shorter
-prefixes of the initial policy without LLM developer calls, and reused accepted
-policies on the fresh tasks. No previous trees or learned champions were loaded.
-
-![Bonsai Q2 real-model pilot: all-in request counts and quality outcomes across three task categories](assets/bonsai-prefix-real-2026-09-30.png)
-
-Packing preserved raw quality on all six fresh tasks with **14 requests all-in**
-(eight preparation plus six deployment), versus **24** baseline requests:
-**41.7% fewer requests**. However, the fixed one-call control also preserved
-quality with only six requests, so this does **not** establish an advantage
-over that cheaper control. LABS lost quality on one task and failed the quality
-criterion. Lasso produced invalid answers and had no Dream-RSI deployment result.
-This is a limited packing result, **not an overall quality/cost win**. Dollar
-cost was not measured; request savings are not dollar savings.
-
-Replay itself makes no new model requests. The SDK changes the exploration
-policy, not model weights. These experiments do not reproduce the published
-Dream-RSI benchmarks or demonstrate generalization to arbitrary agents or
-task families.
-
-## What's new in 0.2.0a4
-
-The replay optimizer can derive `PrefixPolicy`: run the incumbent's original
-decisions for the earliest common number of complete rounds that preserves
-raw quality on the recorded training worlds, then stop. This works with built-in,
-custom and executable source policies without asking an LLM to write a stopping
-rule. Prefix policies retain complete batches and can be saved in checkpoints
-and portable bundles using the appropriate nested policy codec.
-
-Independent holdout checks remain essential: a plateau in recorded history does
-not guarantee that a future task has no later improvement. The original replay
-objective and cost/quality promotion gate remain in place. Source-development
-eligibility also accounts for root-branch order when estimating the minimum
-number of probes needed to reach a recorded result.
-
-Set `DreamRSIConfig(optimizer_prefix_search=False)` to keep the earlier
-portfolio. Prefix bundles require SDK **0.2.0a4 or newer**; existing trees and
-older policy bundles remain supported. Start a new campaign when upgrading
-from an older checkpoint configuration. See the
-[0.2.0a4 release notes](docs/releases/0.2.0a4.md) and
-[prefix guide](docs/replay-prefix.md) for usage and the exact quality guarantee.
-
-### Earlier 0.2.0a3 changes
-
-Discovery trees now snapshot each attempt's state, observation and diagnostics
-when the node is added. Later mutations by an agent cannot silently rewrite
-earlier replay evidence. The zero-LLM optimizer also checks short branching and
-stopping policies before local parameter tweaks. In a deterministic regression
-tree, this exposes an equal-quality candidate with **one attempted expansion
-instead of three**; this is a test of the search gap, not a claim of savings on
-unseen tasks. Independent validation remains essential before deployment.
-See the [0.2.0a3 release notes](docs/releases/0.2.0a3.md).
-
-### Earlier 0.2.0a2 changes
-
-Share exploration policies and recorded search experience across projects.
-Version `0.2.0a2` packages policy versions and replay trees into portable JSON
-bundles, with a GitHub CLI workflow for discovery, publication and installation.
-Applications can adopt community-developed packages while retaining their own
-agents, compatibility rules, quality checks and control over further development.
-See the [release walkthrough](docs/releases/0.2.0a2.md) for the workflow diagram,
-a complete recipient example and compatibility limits.
-
-### Earlier 0.2.0a1 changes
-
-This alpha introduces persistent policy reuse through `AdaptivePolicyMemory`,
-improves replay cost accounting at the recorded-tree boundary, and gives the
-source developer clearer feedback about decisions that do not save live calls.
-It also publishes the two experiment records above with preparation costs
-shown explicitly. The `0.2` line marks a broader experimental SDK surface,
-**not** a proven all-in win on an LLM discovery agent.
-
-### Earlier 0.1.0a4 changes
-
-Recorded runs can now feed an offline policy-improvement pass without a new training run.
-Validation worlds are collected only after a candidate improves training replay; the
-default promotion gate compares raw quality and probe count separately. A combined
-agent/developer call cap and early revision stops reduce avoidable work. These changes
-have **not yet proven an end-to-end cost win with an LLM discovery agent**.
-
-The default gate now requires paired quality/probe evidence. If you relied on
-score-only promotion, pass `ReplayOnlyGate` explicitly. Built-in policy variants run
-before the LLM developer; set `DefaultMethod(force_developer=True)` when source
-development must run even after a cheap candidate qualifies.
-For offline improvement with strict replay, the SDK also checks the recorded
-tree before paying for source generation. If even an optimistic path cannot
-improve raw quality or reduce probes, it skips the developer. This is an
-impossibility check on recorded outcomes, not a prediction of unseen tasks.
-
-## What's new in 0.1.0a3
-
-That release added the Appendix B grid workflow, bounded source reloads with
-SQLite manifests, and replay-capacity accounting. The current published alpha
-is listed above.
+Earlier policy-code and discovery experiments remain documented separately: [Bonsai Q2 fixture](docs/experiments/ternary-bonsai-diverse-2026-09-24.md) and [GPT-6 Luna discovery](docs/experiments/luna-xhigh-discovery-v1.md). For previous version changes, see [CHANGELOG.md](CHANGELOG.md).
 
 <a id="quickstart"></a>
 ## Install and try
 
-You need **Python 3.11+**. Install the alpha from PyPI in your virtual environment:
+You need **Python 3.11+**. Install the Beta prerelease:
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a4
+python -m pip install --pre --upgrade dreamrsi==0.3.0b1
 ```
+
+To run the repository examples from a source checkout:
+
+```bash
+python -m pip install -e .
+python examples/17_certified_quality.py
+```
+
+The demo uses a deterministic agent to check mechanics; it is not a model benchmark.
 
 The same package includes the Python API and `dreamrsi` command. GitHub CLI (`gh`)
 is an additional requirement only when publishing a policy package to GitHub.
@@ -613,10 +627,13 @@ Its [configuration guide](docs/sandbox.md) covers resource limits, per-function 
 JSON profiles and an optional interruptible worker process.
 These are SDK implementations, not reproductions of every research execution detail.
 
-## Alpha limitations
+## Scope and limitations
 
 - **No universal speedup claim.** A compatible interface is not evidence of effectiveness
   on every AI architecture. Meaningful evaluation and controlled experiments are essential.
+- **Explicit quality contract.** Strict preservation requires a sound bound and the same
+  initial candidate, evaluator, original policy and budgets as the reference. Without an
+  attained bound, preserving quality may require all baseline calls.
 - **Restricted generated-policy language.** Helpers, bounded collections and a math proxy
   are supported; arbitrary Python, host imports and external tools are unavailable.
 - **Reported costs.** USD/token limits require explicit ceilings; nested API usage requires
@@ -633,18 +650,25 @@ These are SDK implementations, not reproductions of every research execution det
 <a id="roadmap"></a>
 ## Roadmap
 
-These are priorities, not promised release dates. Progress means working code and
-reproducible checks rather than a growing list of framework names.
+The Beta engineering checklist below is implemented. This records available SDK
+features and compatibility gates; it does not mark every scientific experiment as
+successful. Further research evaluation is listed separately.
 
 | Phase | Deliverable | Completion criterion |
 | :--- | :--- | :--- |
 | **01 · Foundation** ✓ | Adapters, trees, replay, policies, budgets, tests | Executable examples and contract checks |
 | **02 · Observable policies** ✓ | Revealed observations, diagnostics, historical context | Tests exclude future-information leakage |
-| **03 · Reliable campaigns** ◐ | Persistent storage, resume, campaign-wide limits | Resume after a restart without losing history |
+| **03 · Reliable campaigns** ✓ | SQLite storage, resume, campaign-wide limits | Restart and usage recovery tests; unresolved external calls require reconciliation |
 | **04 · Evidence before promotion** ✓ | Independent validation worlds and reports | Separate train/validation evidence and reproducible decisions |
-| **05 · Dreaming with code** ◐ | LLM policy developer and bounded execution | Behavioral revision, stopping repair, promotion and reload verified on a toy task; broaden evaluation |
-| **06 · Real integrations** ◐ | Real-agent examples and provider cost accounting | Public comparisons under equal, documented budgets |
-| **07 · Stable SDK** ○ | Stable APIs, versioned data, package publication | Compatibility checks and migration guidance |
+| **05 · Dreaming with code** ✓ | LLM developer, revision feedback, bounded source/process execution | Source revision, repair, promotion and reload tests; real local developer evidence above |
+| **06 · Provider integrations** ✓ | Model-client adapters, callable agents, optional LangChain, measured usage | Nested request accounting, preparation/deployment caps and adapter tests |
+| **07 · Beta contracts** ✓ | Public protocols, schema guards, bundle compatibility, wheel gates | Legacy loaders, rejected unknown schemas, CLI and sandbox in an isolated installed wheel |
+
+**Research work remains:** independent prospective
+comparisons on more task families, practical task bounds, measured tokens/dollars,
+and reproductions of the original math, algorithm and GPU experiments. Neither the
+historical Bonsai pilot nor the deterministic contract tests prove an all-category
+real-model economic win.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the technical audit and implementation priorities.
 
@@ -671,9 +695,9 @@ python -m pip install build
 python -m build
 ```
 
-The initial public commit passed CI on Python 3.11–3.14 on Linux and 3.14 on Windows.
-See [Actions](https://github.com/TheAstrayDev/dream-rsi-sdk/actions) for the current commit's
-status. Tests need no paid APIs or model credentials.
+CI covers Python 3.11–3.14 on Linux and 3.14 on Windows, with additional installed-wheel
+jobs on Linux and Windows. Remote results are tied to the exact commit in GitHub Actions. See [Actions](https://github.com/TheAstrayDev/dream-rsi-sdk/actions).
+Local tests need no paid APIs or model credentials.
 
 ```text
 src/dreamrsi/

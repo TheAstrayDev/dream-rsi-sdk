@@ -300,6 +300,9 @@ class DiscoveryTree:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DiscoveryTree:
+        from dreamrsi.models._schema import validate_schema
+
+        validate_schema(data, cls.__name__)
         tree = cls(tree_id=data["tree_id"])
         tree._committed = data.get("committed", False)
         tree._root_id = data.get("root_id")

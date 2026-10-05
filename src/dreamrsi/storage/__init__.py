@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import threading
 
 from dreamrsi.discovery import DiscoveryNode
 from dreamrsi.events import Event
@@ -22,6 +23,7 @@ class InMemoryStore:
 
     def __init__(self) -> None:
         self._checkpoints: dict[str, dict] = {}
+        self._checkpoint_lock = threading.Lock()
         self._runs: dict[str, Run] = {}
         self._nodes: dict[str, DiscoveryNode] = {}
         self._policies: dict[str, PolicyVersion] = {}
@@ -71,10 +73,20 @@ class InMemoryStore:
         self._evaluations[evaluation.id] = copy.deepcopy(evaluation)
 
     async def save_checkpoint(self, campaign_id, data):
-        self._checkpoints[campaign_id] = copy.deepcopy(data)
+        with self._checkpoint_lock:
+            self._checkpoints[campaign_id] = copy.deepcopy(data)
 
     async def get_checkpoint(self, campaign_id):
-        return copy.deepcopy(self._checkpoints.get(campaign_id))
+        with self._checkpoint_lock:
+            return copy.deepcopy(self._checkpoints.get(campaign_id))
+
+    async def compare_and_swap_checkpoint(self, campaign_id, expected, data):
+        """Replace one checkpoint only while its previous value is unchanged."""
+        with self._checkpoint_lock:
+            if self._checkpoints.get(campaign_id) != expected:
+                return False
+            self._checkpoints[campaign_id] = copy.deepcopy(data)
+            return True
 
     async def close(self) -> None:
         pass

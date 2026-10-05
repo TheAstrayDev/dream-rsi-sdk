@@ -5,6 +5,8 @@ import enum
 import uuid
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 class RunStatus(enum.StrEnum):
     PENDING = "PENDING"
@@ -30,6 +32,7 @@ class Task:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})
 
 
@@ -53,6 +56,7 @@ class Run:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "status" in d:
             d["status"] = RunStatus(d["status"])
@@ -79,6 +83,7 @@ class Round:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "phase" in d:
             d["phase"] = RoundPhase(d["phase"])
@@ -106,6 +111,7 @@ class DreamCycle:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "status" in d:
             d["status"] = RunStatus(d["status"])
@@ -141,4 +147,5 @@ class CostRecord:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})

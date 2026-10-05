@@ -9,10 +9,14 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import json
 import math
 import operator
+import threading
 import time
+from collections import OrderedDict
 from dataclasses import asdict, dataclass, replace
+from pathlib import Path
 from typing import Any
 
 from dreamrsi.errors import SandboxError
@@ -165,7 +169,62 @@ class SandboxConfig:
 
     @classmethod
     def from_dict(cls, data):
+        if type(data) is not dict or any(type(key) is not str for key in data):
+            raise ValueError("Sandbox profile must be a JSON object")
+        unknown = set(data) - cls.__dataclass_fields__.keys()
+        if unknown:
+            raise ValueError(f"Unknown sandbox settings: {', '.join(sorted(unknown))}")
         return cls(**data)
+
+    @classmethod
+    def preset(cls, name="balanced", **overrides):
+        """Choose a finite resource envelope; all supported language features stay enabled."""
+        presets = {
+            "small": {
+                "max_steps": 10_000,
+                "max_items": 2_000,
+                "max_units": 200_000,
+                "max_source_bytes": 32_768,
+                "max_ast_nodes": 4_000,
+                "max_value_depth": 32,
+                "max_integer_bits": 256,
+                "max_call_depth": 16,
+            },
+            "balanced": {},
+            "large": {
+                "max_steps": 1_000_000,
+                "max_items": 100_000,
+                "max_units": 20_000_000,
+                "max_source_bytes": 1_048_576,
+                "max_ast_nodes": 64_000,
+                "max_value_depth": 64,
+                "max_integer_bits": 1_024,
+                "max_call_depth": 64,
+            },
+        }
+        if type(name) is not str or name not in presets:
+            raise ValueError("Unknown sandbox preset; choose small, balanced or large")
+        return cls(**{**presets[name], **overrides})
+
+    def to_json(self, *, indent=2):
+        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
+
+    @classmethod
+    def from_json(cls, text):
+        return cls.from_dict(json.loads(text))
+
+    def save(self, path, *, overwrite=False):
+        """Save a host-side profile. Generated policy code cannot access this API."""
+        if type(overwrite) is not bool:
+            raise ValueError("overwrite must be boolean")
+        target = Path(path)
+        with target.open("w" if overwrite else "x", encoding="utf-8") as stream:
+            stream.write(self.to_json() + "\n")
+        return target.resolve()
+
+    @classmethod
+    def load(cls, path):
+        return cls.from_json(Path(path).read_text(encoding="utf-8"))
 
 
 class _Return(Exception):
@@ -184,10 +243,59 @@ class _Continue(Exception):
 class PolicySandbox:
     """No dependencies. Each call gets a fresh interpreter and JSON-only view."""
 
-    def __init__(self, config=None, **limits):
+    def __init__(self, config=None, *, cache_size=16, **limits):
+        if type(cache_size) is not int or cache_size < 0:
+            raise ValueError("cache_size must be a nonnegative integer")
         self.config = replace(config or SandboxConfig(), **limits)
         for name, value in asdict(self.config).items():
             setattr(self, name, value)
+        self._cache_size = cache_size
+        self._programs: OrderedDict[tuple[SandboxConfig, str], ast.Module] = OrderedDict()
+        self._cache_hits = self._cache_misses = 0
+        self._cache_lock = threading.Lock()
+
+    @classmethod
+    def from_preset(cls, name="balanced", *, cache_size=16, **limits):
+        return cls(SandboxConfig.preset(name, **limits), cache_size=cache_size)
+
+    @classmethod
+    def from_file(cls, path, *, cache_size=16, **limits):
+        return cls(SandboxConfig.load(path), cache_size=cache_size, **limits)
+
+    def cache_info(self):
+        """Host-side telemetry; cache contents never contain observations or policy state."""
+        with self._cache_lock:
+            return {
+                "capacity": self._cache_size,
+                "entries": len(self._programs),
+                "hits": self._cache_hits,
+                "misses": self._cache_misses,
+            }
+
+    def clear_cache(self):
+        with self._cache_lock:
+            self._programs.clear()
+            self._cache_hits = self._cache_misses = 0
+
+    def _program(self, code):
+        # The public parser always returns an independent tree. Only private, read-only
+        # trees are cached; source/profile changes must pass validation again.
+        if type(code) is not str or len(code.encode()) > self.config.max_source_bytes:
+            raise SandboxError("Policy source limit exceeded")
+        key = (self.config, code)
+        with self._cache_lock:
+            if self._cache_size and key in self._programs:
+                self._cache_hits += 1
+                self._programs.move_to_end(key)
+                return self._programs[key]
+            self._cache_misses += 1
+        tree = self.parse(code)
+        with self._cache_lock:
+            if self._cache_size:
+                self._programs[key] = tree
+                if len(self._programs) > self._cache_size:
+                    self._programs.popitem(last=False)
+        return tree
 
     def capabilities(self):
         return {
@@ -298,7 +406,7 @@ class PolicySandbox:
 
     def validate(self, code):
         """Parse without executing; normalized hashes ignore comments/formatting."""
-        tree = self.parse(code)
+        tree = self._program(code)
         return {"ast_hash": hashlib.sha256(ast.dump(tree).encode()).hexdigest()}
 
     async def execute(self, code, policy_view, timeout_s=5.0):
@@ -383,7 +491,7 @@ class _Interpreter:
     def run(self, code, view):
         if type(code) is not str or len(code.encode()) > self.limits.max_source_bytes:
             raise SandboxError("Policy source limit exceeded")
-        tree = self.limits.parse(code)
+        tree = self.limits._program(code)
         for node in tree.body:
             self.last_node = node
             if isinstance(node, ast.Import):

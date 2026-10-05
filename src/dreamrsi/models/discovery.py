@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from ._schema import validate_schema
+
 
 class NodeStatus(Enum):
     """Lifecycle status of a discovery node."""
@@ -77,6 +79,7 @@ class DiscoveryNode:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DiscoveryNode:
+        validate_schema(data, cls.__name__)
         data = copy.deepcopy(data)
         return cls(
             id=data["id"],

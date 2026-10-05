@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "version": "0.3.0b1",
+  "date": "2026-10-04",
+  "scope": "Local engineering evidence only; no new real-model performance claim.",
+  "runtime": {
+    "python": "3.14.6",
+    "platform": "Windows"
+  },
+  "source_hash_normalization": "UTF-8 source bytes with CRLF normalized to LF",
+  "source_sha256": {
+    "src/dreamrsi/sandbox.py": "7d89e55b150e93363fa8ac7632ebce6c0c094cba7bf6605e614e5fc113388cb4",
+    "src/dreamrsi/economics.py": "75d5205326696034da311666b6094946abe57b0a664d798265e9592d66d83cc6",
+    "src/dreamrsi/runtime.py": "c62c2f61f9940b4994689c8135afdfcd23a57ba162bffb192101ad0f6cdbbdd2",
+    "src/dreamrsi/quality.py": "fc57fa2cd95be5b8a0b471c5a427383d1e52e3a25c951f030793a96f766d0c6c",
+    "src/dreamrsi/policies/certified.py": "86ec2a174ccfc29ded448007e024ebb827dda68d9343da8d9765e1d7a0215a99",
+    "tests/test_quality_contract.py": "f94bd113fd65f822646ed36c11533c115bf1abe2001a2e467e20cdef2811ddc2",
+    "tools/collect_beta_quality.py": "7ee1a922e4ba2972dbe79a42ac4ee927273b9e743413072affb4a8bdefb74f5e"
+  },
+  "sandbox": {
+    "method": "same balanced_source, fresh sandbox per sample, 7 alternating paired samples x 1000 decisions; no LLM calls",
+    "cases": {
+      "terminal": {
+        "uncached_s": 0.2652980999991996,
+        "cached_s": 0.03310350000174367,
+        "speedup": 8.014200914864757,
+        "runs": {
+          "0": [
+            0.2652980999991996,
+            0.2676004000022658,
+            0.34219429999939166,
+            0.2600657000002684,
+            0.2639392000019143,
+            0.2684566999996605,
+            0.26464820000182954
+          ],
+          "16": [
+            0.03393399999913527,
+            0.03276969999933499,
+            0.03699620000043069,
+            0.03257549999761977,
+            0.033145600002171705,
+            0.03310350000174367,
+            0.03305679999903077
+          ]
+        }
+      },
+      "one_node": {
+        "uncached_s": 0.4090256999988924,
+        "cached_s": 0.14081570000053034,
+        "speedup": 2.904688184608335,
+        "runs": {
+          "0": [
+            0.4090256999988924,
+            0.4042808000012883,
+            0.4060285000014119,
+            0.40827340000032564,
+            0.48810539999976754,
+            0.40959619999921415,
+            0.4105266999977175
+          ],
+          "16": [
+            0.14081570000053034,
+            0.1404432999988785,
+            0.1411632000017562,
+            0.13910820000091917,
+            0.13920109999889974,
+            0.1421024999981455,
+            0.14170080000258167
+          ]
+        }
+      },
+      "eight_nodes": {
+        "uncached_s": 0.9706637999988743,
+        "cached_s": 0.6893610000006447,
+        "speedup": 1.4080631193205977,
+        "runs": {
+          "0": [
+            0.9706637999988743,
+            0.9627930999995442,
+            1.0375801999980467,
+            0.9600129999998899,
+            0.9657869000002393,
+            0.9829344000027049,
+            1.0457392999996955
+          ],
+          "16": [
+            0.6912674999985029,
+            0.6899082999989332,
+            0.687389599999733,
+            0.6893610000006447,
+            0.697055000000546,
+            0.686450799999875,
+            0.6871103000012226
+          ]
+        }
+      }
+    }
+  },
+  "economy": {
+    "evidence_type": "exact_integer_accounting_example_not_a_model_benchmark",
+    "baseline_calls_per_task": 4,
+    "horizon": 6,
+    "minimum_deployment_calls_per_task": 1,
+    "historical_preparation_calls": 0,
+    "preparation_calls": 2,
+    "deployment_calls": 8,
+    "tasks_completed": 2,
+    "unfinished_floor_calls": 4,
+    "baseline_horizon_calls": 24,
+    "strict_total_call_cap": 23,
+    "static_additional_calls": 15,
+    "dynamic_additional_calls": 9
+  },
+  "quality": {
+    "schema_version": 1,
+    "evidence_type": "exhaustive_deterministic_sdk_runtime_invariant",
+    "title": "Certified stopping preserves raw quality on all 243 finite test trajectories",
+    "provenance": {
+      "python_version": "3.14.6",
+      "report_type": "deterministic engineering verification",
+      "implementation": "DreamRSI.run with FunctionalAgentAdapter and QualityContract",
+      "contract_semantics": "docs/quality-contract.md",
+      "enumeration_reference": "tests/test_quality_contract.py::test_exact_prefix_optimality_on_every_bounded_finite_trajectory",
+      "trajectory_values": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "initial_qualities": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "future_steps": 4,
+      "upper_bound": 1.0,
+      "baseline_certified_stopping": false,
+      "certified_certified_stopping": true,
+      "policy": "FixedParallelPolicy(branches=1, max_depth=4)",
+      "shared_budget": {
+        "model_calls": 4,
+        "evaluator_calls": 5,
+        "max_parallelism": 1
+      },
+      "shared_initial_evaluator_calls_per_case_per_arm": 1,
+      "external_model_api_calls": 0,
+      "interpretation": "Logical deterministic agent dispatches, not measured provider calls, tokens, dollars, or real-model performance."
+    },
+    "cases": 243,
+    "quality_mismatches": 0,
+    "early_stops": 195,
+    "reference_logical_agent_dispatches_total": 972,
+    "reference_logical_agent_dispatches_mean": 4.0,
+    "reference_local_evaluator_calls_total": 1215,
+    "reference_initial_local_evaluator_calls_total": 243,
+    "certified_logical_agent_dispatches_total": 390,
+    "certified_logical_agent_dispatches_mean": 1.6049382716049383,
+    "certified_local_evaluator_calls_total": 633,
+    "certified_initial_local_evaluator_calls_total": 243,
+    "raw_quality_difference_distribution": [
+      {
+        "difference": 0.0,
+        "cases": 243
+      }
+    ],
+    "certified_logical_agent_dispatches_distribution": [
+      {
+        "logical_agent_dispatches": 0,
+        "cases": 81
+      },
+      {
+        "logical_agent_dispatches": 1,
+        "cases": 54
+      },
+      {
+        "logical_agent_dispatches": 2,
+        "cases": 36
+      },
+      {
+        "logical_agent_dispatches": 3,
+        "cases": 24
+      },
+      {
+        "logical_agent_dispatches": 4,
+        "cases": 48
+      }
+    ],
+    "groups_by_initial_quality": [
+      {
+        "initial_quality": 0.0,
+        "cases": 81,
+        "quality_mismatches": 0,
+        "early_stops": 57,
+        "reference_logical_agent_dispatches_total": 324,
+        "reference_logical_agent_dispatches_mean": 4.0,
+        "certified_logical_agent_dispatches_total": 195,
+        "certified_logical_agent_dispatches_mean": 2.4074074074074074
+      },
+      {
+        "initial_quality": 0.5,
+        "cases": 81,
+        "quality_mismatches": 0,
+        "early_stops": 57,
+        "reference_logical_agent_dispatches_total": 324,
+        "reference_logical_agent_dispatches_mean": 4.0,
+        "certified_logical_agent_dispatches_total": 195,
+        "certified_logical_agent_dispatches_mean": 2.4074074074074074
+      },
+      {
+        "initial_quality": 1.0,
+        "cases": 81,
+        "quality_mismatches": 0,
+        "early_stops": 81,
+        "reference_logical_agent_dispatches_total": 324,
+        "reference_logical_agent_dispatches_mean": 4.0,
+        "certified_logical_agent_dispatches_total": 0,
+        "certified_logical_agent_dispatches_mean": 0.0
+      }
+    ]
+  }
+}

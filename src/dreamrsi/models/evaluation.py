@@ -6,6 +6,8 @@ import time
 import uuid
 from typing import Any, Self
 
+from ._schema import validate_schema
+
 
 class EvaluationStatus(enum.StrEnum):
     PASSED = "PASSED"
@@ -32,6 +34,7 @@ class Evaluation:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "status" in d:
             d["status"] = EvaluationStatus(d["status"])

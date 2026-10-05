@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="420" viewBox="0 0 1160 420" role="img" aria-labelledby="title desc">
+  <title id="title">Dream-RSI: preserve quality, skip only provably redundant work</title>
+  <desc id="desc">Keep the original search policy. Evaluate answers and retain the best raw quality. Stop if a proven task bound is attained; otherwise continue the original search. All-in accounting includes preparation and deployment.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10" fill="none" stroke="#75e0be" stroke-width="1.5"/></marker>
+  </defs>
+  <rect width="1160" height="420" rx="22" fill="#111d25"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="48" y="52" font-size="13" letter-spacing="2.4" fill="#75e0be">QUALITY-PRESERVING SEARCH</text>
+    <text x="48" y="92" font-size="28" font-weight="700" fill="#f3f0e6">Same search. Fewer provably redundant calls.</text>
+    <g fill="#1c3039" stroke="#45616c" stroke-width="1.5">
+      <rect x="48" y="134" width="236" height="112" rx="14"/>
+      <rect x="330" y="134" width="255" height="112" rx="14"/>
+      <rect x="632" y="134" width="254" height="112" rx="14"/>
+      <rect x="937" y="145" width="175" height="90" rx="14" stroke="#75e0be"/>
+    </g>
+    <g font-size="19" font-weight="700" fill="#f3f0e6" text-anchor="middle">
+      <text x="166" y="173">Original policy</text>
+      <text x="457" y="173">Evaluate and retain</text>
+      <text x="759" y="173">Quality reaches bound?</text>
+      <text x="1024" y="181" fill="#75e0be">Stop</text>
+    </g>
+    <g font-size="14" fill="#b5c7cd" text-anchor="middle">
+      <text x="166" y="203">Same decisions and full batches</text>
+      <text x="457" y="203">Best valid raw-quality answer</text>
+      <text x="759" y="203">A proven task maximum</text>
+      <text x="1024" y="209">Quality preserved</text>
+      <text x="536" y="291">No / unknown: continue the original policy</text>
+    </g>
+    <text x="48" y="352" font-size="17" fill="#eebc73">All-in = historical preparation + new preparation + deployment</text>
+    <text x="48" y="383" font-size="14" fill="#90a8b0">Savings count only when measured quality is preserved. A replay plateau is not a proof of a future optimum.</text>
+    <text x="910" y="159" font-size="12" fill="#75e0be" text-anchor="middle">YES</text>
+  </g>
+  <g fill="none" stroke="#75e0be" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M286 190H323"/><path d="M587 190H625"/><path d="M888 190H930"/>
+    <path d="M759 247V308H166V253"/>
+  </g>
+</svg>

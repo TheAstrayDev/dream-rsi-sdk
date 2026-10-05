@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import random
 from collections.abc import Callable
 from typing import Any
 
 from dreamrsi.errors import ConfigurationError
+from dreamrsi.quality import get_record_quality
 
 
 def task_key(task):
@@ -122,20 +122,15 @@ class HoldoutPipeline:
 
     def quality_from_trajectory(self, trajectory):
         """Best raw quality among observations revealed by one replay trajectory."""
-        if self.quality_metric is None:
-            return trajectory.best_score
+        if self.quality_metric is None and not trajectory.observations:
+            # Compatibility for an injected replay engine that only reports
+            # its best evaluator score. A configured raw metric needs records.
+            return get_record_quality({"score": trajectory.best_score})
         values = []
         for observation in trajectory.observations.values():
-            try:
-                quality = self.quality_metric(observation)
-            except (KeyError, TypeError, ValueError):
-                continue
-            if (
-                not isinstance(quality, bool)
-                and isinstance(quality, (int, float))
-                and math.isfinite(quality)
-            ):
-                values.append(float(quality))
+            quality = get_record_quality(observation, self.quality_metric)
+            if quality is not None:
+                values.append(quality)
         return max(values) if values else None
 
     async def evaluate(self, runtime, incumbent, challenger):

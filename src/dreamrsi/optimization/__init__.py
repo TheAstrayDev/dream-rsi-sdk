@@ -1,12 +1,12 @@
 import itertools
-import math
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import dreamrsi.policies as policies
 from dreamrsi.models.policy import PolicyDeploymentStatus, PolicyVersion
+from dreamrsi.quality import get_record_quality
 
 
 class DeterministicPolicyOptimizer:
@@ -35,58 +35,30 @@ class DeterministicPolicyOptimizer:
             return None
         caps = []
         for trajectory in trajectories:
-            if self._quality_metric is None:
-                target = trajectory.best_score
-                root_reached = any(
-                    record.get("depth") == 0
-                    and record.get("score") is not None
-                    and target is not None
-                    and record["score"] >= target
-                    for record in trajectory.observations.values()
-                )
-                first = 0 if root_reached else next(
-                    (
-                        step.round_number for step in trajectory.steps
-                        if step.best_score_so_far is not None
-                        and step.best_score_so_far >= target
-                    ),
-                    None,
-                ) if target is not None else None
-            else:
-                values = {}
-                for node_id, observation in trajectory.observations.items():
-                    try:
-                        value = self._quality_metric(observation)
-                    except (KeyError, TypeError, ValueError):
-                        continue
-                    if (
-                        not isinstance(value, bool)
-                        and isinstance(value, (int, float))
-                        and math.isfinite(value)
-                    ):
-                        values[node_id] = float(value)
-                target = max(values.values()) if values else None
-                reached = {
-                    node_id for node_id, value in values.items()
-                    if value == target
-                }
-                roots = {
-                    node_id for node_id, observation in trajectory.observations.items()
-                    if observation.get("depth") == 0
-                }
-                first = 0 if reached & roots else next(
-                    (
-                        step.round_number for step in trajectory.steps
-                        if reached.intersection(step.revealed_nodes)
-                    ),
-                    None,
-                )
-            if (
-                isinstance(target, bool)
-                or not isinstance(target, (int, float))
-                or not math.isfinite(target)
-                or first is None
-            ):
+            values = {}
+            for node_id, observation in trajectory.observations.items():
+                value = get_record_quality(observation, self._quality_metric)
+                if value is not None:
+                    values[node_id] = value
+            target = max(values.values()) if values else None
+            reached = {
+                node_id for node_id, value in values.items()
+                if value == target
+            }
+            roots = {
+                node_id for node_id, observation in trajectory.observations.items()
+                if isinstance(observation, Mapping)
+                and type(observation.get("depth")) is int
+                and observation["depth"] == 0
+            }
+            first = 0 if reached & roots else next(
+                (
+                    step.round_number for step in trajectory.steps
+                    if reached.intersection(step.revealed_nodes)
+                ),
+                None,
+            )
+            if target is None or first is None:
                 return None
             caps.append(first)
         cap = max(caps)
@@ -120,7 +92,7 @@ class DeterministicPolicyOptimizer:
         variants = variants[: max(0, self._num_variants)]
         if type(incumbent) not in supported:
             return variants
-        while isinstance(incumbent, policies.PrefixPolicy):
+        while isinstance(incumbent, (policies.PrefixPolicy, policies.CertifiedPolicy)):
             incumbent = incumbent.policy
         if type(incumbent) not in supported:
             return variants

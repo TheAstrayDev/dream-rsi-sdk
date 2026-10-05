@@ -2,6 +2,7 @@
 
 from .balanced import BalancedPolicy
 from .breadth_first import BreadthFirstPolicy
+from .certified import CertifiedPolicy
 from .depth_first import DepthFirstPolicy
 from .epsilon_greedy import EpsilonGreedyPolicy
 from .fixed_parallel import FixedParallelPolicy
@@ -18,4 +19,5 @@ __all__ = [
     "BalancedPolicy",
     "FixedParallelPolicy",
     "PrefixPolicy",
+    "CertifiedPolicy",
 ]

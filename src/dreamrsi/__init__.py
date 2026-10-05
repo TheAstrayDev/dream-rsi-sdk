@@ -1,6 +1,6 @@
 """Dream-RSI SDK — Embeddable recursive self-improvement for AI agents.
 
-Independent alpha implementation inspired by Dream-RSI (Zheng et al., 2026, arXiv:2609.14858):
+Independent beta implementation inspired by Dream-RSI (Zheng et al., 2026, arXiv:2609.14858):
 a framework for recursively improving exploration policies using recorded
 discovery trees as replay simulators.
 
@@ -30,6 +30,7 @@ from dreamrsi.accounting import Usage, UsageLedger
 from dreamrsi.adapters import CallableAgentAdapter, FunctionalAgentAdapter
 from dreamrsi.artifacts import PolicyArtifact, PolicyCodec, SourcePolicy
 from dreamrsi.developer import DeveloperConfig, LLMPolicyDeveloper
+from dreamrsi.economics import EconomyPlan
 from dreamrsi.errors import (
     BudgetExceeded,
     ConfigurationError,
@@ -47,6 +48,7 @@ from dreamrsi.methods import DefaultMethod
 from dreamrsi.ollama import OllamaPolicyModel
 from dreamrsi.policy_memory import AdaptivePolicyMemory, AdaptiveRun, PolicyMemorySettings
 from dreamrsi.process_sandbox import ProcessPolicySandbox
+from dreamrsi.quality import QualityContract
 from dreamrsi.runtime import (
     Budget,
     CampaignResult,
@@ -59,11 +61,13 @@ from dreamrsi.sandbox import PolicySandbox, SandboxConfig
 from dreamrsi.storage import SQLiteStore
 from dreamrsi.validation import HoldoutPipeline, split_tasks
 
-__version__ = "0.2.0a4"
+__version__ = "0.3.0b1"
 
 __all__ = [
     "Usage",
     "UsageLedger",
+    "QualityContract",
+    "EconomyPlan",
     "PolicyArtifact",
     "PolicyCodec",
     "SourcePolicy",

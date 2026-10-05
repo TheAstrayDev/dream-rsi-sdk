@@ -14,6 +14,7 @@ import logging
 import math
 import time
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -22,6 +23,7 @@ from dreamrsi._policy import fresh_policy, validate_batch
 from dreamrsi.accounting import Usage, UsageLedger, UsageReporter
 from dreamrsi.adapters import CallableAgentAdapter
 from dreamrsi.discovery import DiscoveryTree, NodeStatus
+from dreamrsi.economics import EconomyPlan
 from dreamrsi.errors import (
     BudgetExceeded,
     ConfigurationError,
@@ -32,6 +34,7 @@ from dreamrsi.models.base import CostRecord, Run, RunStatus
 from dreamrsi.models.budget import Budget
 from dreamrsi.models.policy import PolicyDeploymentStatus, PolicyVersion
 from dreamrsi.models.results import CampaignResult, RunResult
+from dreamrsi.quality import QualityContract, quality_of_record, select_best_record
 from dreamrsi.replay import (
     NodeSummary,
     PolicyView,
@@ -128,6 +131,12 @@ class DreamRSI:
         Owns the complete outer loop. Defaults to DefaultMethod.
     callbacks : list[Callback], optional
         Lifecycle callback objects.
+    quality : QualityContract, optional
+        Raw-quality selection and opt-in stopping at a proven task bound.
+        Strict preservation keeps the original policy; empirical rewrites are opt-in.
+    economy : EconomyPlan, optional
+        Historical-cost-aware preparation limit and measured all-in reporting.
+        Deployment fallback remains governed by explicit resource budgets.
     """
 
     def __init__(
@@ -150,6 +159,8 @@ class DreamRSI:
         policy_codec: Any | None = None,
         campaign_budget: Budget | None = None,
         usage_limits: dict[str, Usage] | None = None,
+        quality: QualityContract | None = None,
+        economy: EconomyPlan | None = None,
     ) -> None:
         # Resolve adapter
         if adapter is not None:
@@ -185,12 +196,29 @@ class DreamRSI:
             )
         self.experiment_version = experiment_version
         self._improving = False
+        self._usage_purpose: ContextVar[str] = ContextVar(
+            "dreamrsi_usage_purpose", default="deployment"
+        )
         self._campaign_id = None
         self.validation = validation
+        if quality is not None and not isinstance(quality, QualityContract):
+            raise ConfigurationError("quality must be a QualityContract")
+        self.quality = quality
+        if economy is not None and not isinstance(economy, EconomyPlan):
+            raise ConfigurationError("economy must be an EconomyPlan")
+        self.economy = economy
+        if quality is not None and validation is not None:
+            metric = getattr(validation, "quality_metric", None)
+            if metric is not quality.metric:
+                raise ConfigurationError("QualityContract and validation must use the same metric")
         from dreamrsi.artifacts import PolicyCodec
+        from dreamrsi.policies import CertifiedPolicy, PrefixPolicy
 
-        self.policy_codec = policy_codec or PolicyCodec(
-            getattr(policy_optimizer, "sandbox", None) or getattr(policy, "sandbox", None)
+        source_policy = policy
+        while isinstance(source_policy, (PrefixPolicy, CertifiedPolicy)):
+            source_policy = source_policy.policy
+        self.policy_codec = policy_codec if policy_codec is not None else PolicyCodec(
+            getattr(policy_optimizer, "sandbox", None) or getattr(source_policy, "sandbox", None)
         )
         self._replay_engine = replay
         self._objective = objective
@@ -302,7 +330,7 @@ class DreamRSI:
         self._optimizer = DeterministicPolicyOptimizer(
             num_variants=self._config.optimizer_variants,
             seed=self._config.random_seed,
-            quality_metric=getattr(self.validation, "quality_metric", None),
+            quality_metric=self._raw_quality_metric(),
             prefix_search=self._config.optimizer_prefix_search,
         )
         return self._optimizer
@@ -341,7 +369,7 @@ class DreamRSI:
         tree = DiscoveryTree()
         costs = CostRecord()
         run_usage = UsageLedger(self._budget)
-        policy = self._champion_policy or self._get_policy()
+        policy = self._protected_policy(self._champion_policy or self._get_policy())
         episode_policy = fresh_policy(policy)
         budget = self._budget or Budget()
 
@@ -416,6 +444,11 @@ class DreamRSI:
                     costs=costs,
                 )
                 next_state = await invoke(self._adapter.next_state, observation, state)
+                metadata = {
+                    "attempt_id": context["attempt_id"],
+                    "usage": context.get("usage", {}),
+                    "evaluation": evaluation.to_dict(),
+                }
                 return dict(
                     state=next_state,
                     proposal=proposal,
@@ -423,11 +456,7 @@ class DreamRSI:
                     observation=observation,
                     score=evaluation.score,
                     cost=sum(u["usd"] for u in context.get("usage", {}).values()),
-                    metadata={
-                        "attempt_id": context["attempt_id"],
-                        "usage": context.get("usage", {}),
-                        "evaluation": evaluation.to_dict(),
-                    },
+                    metadata=metadata,
                     status=NodeStatus.COMPLETED,
                 ), evaluation
             except asyncio.CancelledError:
@@ -448,7 +477,11 @@ class DreamRSI:
                 return dict(
                     state=state,
                     status=NodeStatus.SKIPPED,
-                    metadata={"error": "Campaign budget exhausted"},
+                    cost=sum(u["usd"] for u in context.get("usage", {}).values()),
+                    metadata={
+                        "error": "Campaign budget exhausted",
+                        "usage": context.get("usage", {}),
+                    },
                 ), evaluation
             except Exception as exc:
                 return dict(
@@ -465,7 +498,51 @@ class DreamRSI:
         async def collect():
             nonlocal rounds_done, stop_reason
             initial = await invoke(self._adapter.initial_state, task)
-            tree.create_root(state=initial)
+            root = tree.create_root(state=initial)
+            if self.quality is not None:
+                bound = self.quality.upper_bound
+                try:
+                    if callable(bound):
+                        bound = await invoke(bound, task)
+                except Exception:
+                    bound = None
+                try:
+                    bound = (
+                        float(bound)
+                        if isinstance(bound, (int, float)) and not isinstance(bound, bool)
+                        else None
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    bound = None
+                if bound is not None and not math.isfinite(bound):
+                    bound = None
+                root.metadata["quality_contract"] = {
+                    "id": self.quality.id, "upper_bound": bound, "raw_quality": None,
+                }
+                if self.quality.initial_candidate is not None:
+                    from dreamrsi.errors import EvaluationError
+
+                    clone = getattr(self._adapter, "clone_state", copy.deepcopy)
+                    candidate_state = await invoke(clone, initial)
+                    candidate = await invoke(self.quality.initial_candidate, candidate_state, task)
+                    context = {"task": task, "round": 0, "initial": True, "parent_id": root.id}
+                    try:
+                        evaluation = await self._charge(
+                            "evaluator", self._evaluator.evaluate, candidate, context,
+                            context=context, local=run_usage, costs=costs,
+                        )
+                    except (EvaluationError, BudgetExceeded) as exc:
+                        root.metadata["initial_evaluation_error"] = str(exc)
+                    else:
+                        root.observation = copy.deepcopy(candidate)
+                        root.score = evaluation.score
+                        root.metadata["evaluation"] = evaluation.to_dict()
+                        self._stamp_quality(root)
+                        await self._store.save_evaluation(evaluation)
+                    finally:
+                        root.metadata["initial_evaluator_calls"] = costs.evaluator_calls
+                        root.metadata["usage"] = copy.deepcopy(context.get("usage", {}))
+                        root.cost = sum(u["usd"] for u in context.get("usage", {}).values())
             last_round = None
             for round_num in range(1, max_rounds + 1):
                 if self.usage.breached or run_usage.breached:
@@ -501,7 +578,7 @@ class DreamRSI:
                         Budget(
                             model_calls=costs.model_calls,
                             evaluator_calls=costs.evaluator_calls,
-                            total_llm_calls=costs.model_calls,
+                            total_llm_calls=int(run_usage.spent["total_llm_calls"]),
                             max_nodes=tree.size,
                             max_rounds=rounds_done,
                             wall_time_s=time.monotonic() - started,
@@ -546,6 +623,7 @@ class DreamRSI:
                 revealed_this_round = []
                 for parent_id, (fields, evaluation) in zip(batch, results, strict=True):
                     node = tree.add_node(parent_id=parent_id, **fields)
+                    self._stamp_quality(node)
                     revealed_this_round.append(node.id)
                     if evaluation is not None:
                         await self._store.save_evaluation(evaluation)
@@ -611,7 +689,13 @@ class DreamRSI:
             await self._emit(
                 EventType.BUDGET_EXHAUSTED, run_id=run_id, data={"reason": stop_reason}
             )
-        best_node = tree.get_best_node()
+        best_node = self._best_node(tree)
+        if self._usage_purpose.get() == "deployment":
+            self.usage.complete_deployment()
+            if self._campaign_id:
+                await self._store.save_checkpoint(
+                    self._campaign_id + ":usage", self.usage.to_dict()
+                )
         result = RunResult(
             run_id=run_id,
             best=best_node.observation if best_node else None,
@@ -625,6 +709,9 @@ class DreamRSI:
             metrics={
                 "stop_reason": stop_reason,
                 "failed_nodes": sum(n.status == NodeStatus.FAILED for n in tree.iter_nodes()),
+                "raw_quality": self._node_quality(best_node),
+                "quality_contract": self.quality.id if self.quality else None,
+                "completed_deployments": self.usage.completed_deployments,
             },
         )
         await self._emit(EventType.RUN_COMPLETED, run_id=run_id)
@@ -632,14 +719,21 @@ class DreamRSI:
 
     async def _charge(self, stage, fn, *args, context=None, local=None, costs=None):
         ceiling = self._usage_limits.get(stage, Usage())
-        reservation = self.usage.reserve(stage, ceiling)
+        purpose = self._usage_purpose.get()
+        if purpose == "preparation" and self.economy is not None:
+            available = self._preparation_allowance()
+            assert available is not None
+            required = max(int(stage in ("agent", "developer")), ceiling.provider_calls)
+            if required > available:
+                raise BudgetExceeded("preparation_llm_calls", available, required)
+        reservation = self.usage.reserve(stage, ceiling, purpose=purpose)
         local_reservation = None
         reporter = UsageReporter()
         if context is not None:
             context["report_usage"] = reporter
         try:
             if local is not None:
-                local_reservation = local.reserve(stage, ceiling)
+                local_reservation = local.reserve(stage, ceiling, purpose=purpose)
         except BaseException:
             # Local admission failed before dispatch: release the global reservation.
             self.usage.release(reservation)
@@ -711,10 +805,12 @@ class DreamRSI:
         if self._improving:
             raise ConfigurationError("One runtime cannot run concurrent improvement campaigns")
         self._improving = True
+        purpose_token = self._usage_purpose.set("preparation")
         try:
             async with asyncio.timeout(self.usage.remaining_time):
                 return await invoke(self._method.improve, self, task, rounds=rounds)
         finally:
+            self._usage_purpose.reset(purpose_token)
             self._improving = False
 
     def run_sync(self, task: Any) -> RunResult:
@@ -805,6 +901,7 @@ class DreamRSI:
                 budget=Budget(
                     model_calls=budget.model_calls,
                     evaluator_calls=budget.evaluator_calls,
+                    total_llm_calls=budget.total_llm_calls,
                     max_nodes=500 if budget.max_nodes is None else budget.max_nodes,
                     max_depth=20 if budget.max_depth is None else budget.max_depth,
                     max_parallelism=workers,
@@ -823,7 +920,9 @@ class DreamRSI:
         The objective changes policy selection, not the fixed task evaluator.
         Only the resulting trajectory is exposed; hidden world outcomes are not.
         """
-        trajectory = await invoke(self._get_replay().replay, world, policy, policy_id=policy_id)
+        trajectory = await invoke(
+            self._get_replay().replay, world, self._protected_policy(policy), policy_id=policy_id
+        )
         # Do not mutate an engine's cached trajectory when applying an objective.
         trajectory = copy.deepcopy(trajectory)
         if self._objective is not None:
@@ -933,6 +1032,77 @@ class DreamRSI:
             json.dump(data, f, indent=2, ensure_ascii=False, allow_nan=False)
 
     # ── Internal helpers ───────────────────────────────────────
+
+    def _preparation_allowance(self):
+        if self.economy is None:
+            return None
+        return self.economy.remaining_preparation_calls(
+            preparation_calls=int(self.usage.calls_for("preparation")),
+            deployment_calls=int(self.usage.calls_for("deployment")),
+            tasks_completed=self.usage.completed_deployments,
+        )
+
+    def _raw_quality_metric(self):
+        return self.quality.metric if self.quality is not None else getattr(
+            self.validation, "quality_metric", None
+        )
+
+    def _selection_contract(self):
+        if self.quality is not None:
+            return self.quality
+        metric = self._raw_quality_metric()
+        if metric is not None:
+            return QualityContract(
+                id=getattr(self.validation, "quality_metric_id", "raw_quality"), metric=metric
+            )
+        return None
+
+    def _trajectory_quality(self, trajectory) -> float | None:
+        contract = self._selection_contract()
+        if contract is None:
+            value = trajectory.best_score
+            if value is None and self.validation is None:
+                value = trajectory.replay_score
+        else:
+            value = select_best_record(trajectory.observations, contract)[1]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return float(value) if math.isfinite(value) else None
+
+    def _node_quality(self, node) -> float | None:
+        if node is None:
+            return None
+        return quality_of_record({
+            "observation": node.observation, "diagnostics": node.metadata,
+            "score": node.score, "depth": node.depth, "status": node.status.value,
+            "parent_id": node.parent_id,
+        }, self._selection_contract())
+
+    def _best_node(self, tree):
+        observations = revealed_context(tree, {n.id for n in tree.iter_nodes()})["observations"]
+        node_id, _ = select_best_record(observations, self._selection_contract())
+        return tree.get_node(node_id) if node_id is not None else None
+
+    def _stamp_quality(self, node):
+        if self.quality is not None:
+            stamped = dict(node.metadata.get("quality_contract", {}))
+            stamped.update(id=self.quality.id, raw_quality=self._node_quality(node))
+            node.metadata["quality_contract"] = stamped
+
+    def _protected_policy(self, policy):
+        if self.quality is None:
+            return policy
+        from dreamrsi.policies import CertifiedPolicy, PrefixPolicy
+
+        if self.quality.preserve_policy:
+            policy = self._get_policy()
+        # A learned round cap is not a mathematical quality certificate. Keep
+        # its original search, with exact early stopping when the bound is met.
+        while isinstance(policy, (PrefixPolicy, CertifiedPolicy)):
+            policy = policy.policy
+        if not self.quality.certified_stopping:
+            return policy
+        return CertifiedPolicy(policy, self.quality.id)
 
     def _build_policy_view(
         self,

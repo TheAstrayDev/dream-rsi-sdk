@@ -90,7 +90,7 @@ def configuration(runtime):
     replay = runtime._get_replay()
     developer_config = getattr(optimizer, "config", None)
     sandbox = runtime.policy_codec.sandbox
-    return {
+    settings = {
         "experiment_version": runtime.experiment_version,
         "config": asdict(runtime._config),
         "budget": runtime._budget.to_dict() if runtime._budget else None,
@@ -110,3 +110,8 @@ def configuration(runtime):
         else type(sandbox).__qualname__,
         "validation_batch": runtime.validation.worlds_per_check if runtime.validation else None,
     }
+    if runtime.quality is not None:
+        settings["quality_contract"] = runtime.quality.checkpoint_config()
+    if runtime.economy is not None:
+        settings["economy_plan"] = asdict(runtime.economy)
+    return settings

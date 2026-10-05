@@ -125,7 +125,8 @@ class DefaultMethod:
             raise ConfigurationError("Offline improvement requires a recorded training world")
         # Replaying the same frozen worlds in multiple outer rounds adds no
         # evidence. The developer's inner revision loop handles rewrites.
-        effective_rounds = rounds if self.online else 1
+        preserve_policy = runtime.quality is not None and runtime.quality.preserve_policy
+        effective_rounds = rounds if self.online and not preserve_policy else 1
         await runtime._emit(EventType.CAMPAIGN_STARTED, data={"campaign_id": campaign_id})
 
         if self.campaign_id and not self.resume:
@@ -135,18 +136,21 @@ class DefaultMethod:
 
         all_costs = CostRecord()
         best_overall_score: float | None = None
+        best_overall_quality: float | None = None
         best_overall_result: Any = None
         best_node_id: str | None = None
         best_tree = None
 
         for world in runtime._worlds:
-            node = world.tree.get_best_node()
+            node = runtime._best_node(world.tree)
+            quality = runtime._node_quality(node)
             if (
                 node
-                and node.score is not None
-                and (best_overall_score is None or node.score > best_overall_score)
+                and quality is not None
+                and (best_overall_quality is None or quality > best_overall_quality)
             ):
                 best_overall_score, best_overall_result = node.score, node.observation
+                best_overall_quality = quality
                 best_node_id, best_tree = node.id, world.tree
 
         if self.campaign_id and not self.resume:
@@ -154,6 +158,14 @@ class DefaultMethod:
 
         for t in range(completed + 1, effective_rounds + 1):
             logger.info("Dream-RSI round %d/%d", t, effective_rounds)
+
+            if self.online and runtime.economy is not None and (
+                runtime._preparation_allowance() == 0
+            ):
+                await runtime._emit(
+                    EventType.BUDGET_EXHAUSTED, data={"reason": "all_in_preparation_limit"}
+                )
+                break
 
             if self.online and phase != "dream":
                 if self.campaign_id:
@@ -167,13 +179,15 @@ class DefaultMethod:
                 all_costs.evaluator_calls += run_result.costs.evaluator_calls
                 all_costs.online_evaluator_cost += run_result.costs.online_evaluator_cost
 
-                if run_result.best_score is not None and (
-                    best_overall_score is None or run_result.best_score > best_overall_score
+                run_quality = run_result.metrics.get("raw_quality", run_result.best_score)
+                if run_quality is not None and (
+                    best_overall_quality is None or run_quality > best_overall_quality
                 ):
                     best_overall_score = run_result.best_score
                     best_overall_result = run_result.best
                     best_node_id = run_result.best_node_id
                     best_tree = run_result.tree
+                    best_overall_quality = run_quality
 
                 # ── Phase 2: Convert tree to replay world ──
                 if run_result.tree is not None:
@@ -188,7 +202,7 @@ class DefaultMethod:
             phase = "ready"
 
             # ── Phase 3: Dreaming — policy improvement ──
-            if runtime._frozen or len(runtime._worlds) < 1:
+            if preserve_policy or runtime._frozen or len(runtime._worlds) < 1:
                 if self.campaign_id:
                     await checkpoints.save(runtime, campaign_id, task, t)
                 continue
@@ -224,27 +238,9 @@ class DefaultMethod:
 
             # Rank quality and work separately. The replay objective remains
             # recorded for research, but its fixed beta is not a quality gate.
-            quality_metric = getattr(runtime.validation, "quality_from_trajectory", None)
-
-            def raw_quality(
-                trajectory,
-                metric=quality_metric,
-                has_validation=runtime.validation is not None,
-            ):
-                value = (
-                    metric(trajectory)
-                    if callable(metric)
-                    else trajectory.best_score
-                )
-                # A custom replay engine may expose only its objective. Keep
-                # such extensions usable when no raw metric was configured.
-                if value is None and not has_validation:
-                    value = trajectory.replay_score
-                if isinstance(value, bool) or not isinstance(value, (int, float)):
-                    return None
-                return float(value) if math.isfinite(value) else None
-
-            incumbent_quality_raw = [raw_quality(traj) for traj in incumbent_trajectories]
+            incumbent_quality_raw = [
+                runtime._trajectory_quality(traj) for traj in incumbent_trajectories
+            ]
             if any(value is None for value in incumbent_quality_raw):
                 await runtime._emit(
                     EventType.DREAM_COMPLETED, data={"round": t, "reason": "unscored_quality"}
@@ -258,9 +254,9 @@ class DefaultMethod:
 
             # A developer may evaluate its own proposals. Cache those free
             # replay results rather than traversing the same worlds twice.
-            replay_cache = {}
+            replay_cache: dict[int, list[ReplayTrajectory]] = {}
 
-            async def evaluate_candidate(candidate, cache=replay_cache):
+            async def evaluate_candidate(candidate, cache=replay_cache) -> list[ReplayTrajectory]:
                 key = id(candidate)
                 if key not in cache:
                     trajectories = [
@@ -280,15 +276,15 @@ class DefaultMethod:
                         },
                     )
 
-            best_challenger = None
-            best_challenger_avg = None
-            best_challenger_trajectories = None
-            best_challenger_qualities = None
+            best_challenger: Any = None
+            best_challenger_avg: float | None = None
+            best_challenger_trajectories: list[ReplayTrajectory] | None = None
+            best_challenger_qualities: list[float] | None = None
             best_world_scores = {}
             # A replay boundary has no recorded child, but the same action on a
             # fresh task can still consume a live model call. Do not treat it
             # as a demonstrated call saving when selecting a challenger.
-            def attempted_calls(trajectories):
+            def attempted_calls(trajectories: list[ReplayTrajectory]) -> int:
                 return sum(
                     max(traj.total_probes, sum(len(step.batch) for step in traj.steps))
                     for traj in trajectories
@@ -297,10 +293,10 @@ class DefaultMethod:
             incumbent_attempts = attempted_calls(incumbent_trajectories)
 
             async def select_challenger(
-                challengers,
-                baseline_quality=tuple(incumbent_quality),
-                baseline_attempts=incumbent_attempts,
-            ):
+                challengers: list[Any],
+                baseline_quality: list[float],
+                baseline_attempts: int,
+            ) -> None:
                 nonlocal best_challenger, best_challenger_avg
                 nonlocal best_challenger_trajectories, best_challenger_qualities
                 nonlocal best_world_scores
@@ -311,7 +307,7 @@ class DefaultMethod:
                         logger.exception("Challenger replay failed")
                         continue
                     scores = [traj.replay_score for traj in trajectories]
-                    raw_qualities = [raw_quality(traj) for traj in trajectories]
+                    raw_qualities = [runtime._trajectory_quality(traj) for traj in trajectories]
                     if (
                         len(trajectories) != len(runtime._worlds)
                         or any(score is None for score in scores)
@@ -341,7 +337,8 @@ class DefaultMethod:
                         ):
                             continue
                     best_challenger = challenger
-                    best_challenger_avg = sum(scores) / len(scores)
+                    scored = [value for value in scores if value is not None]
+                    best_challenger_avg = sum(scored) / len(scored)
                     best_challenger_trajectories = trajectories
                     best_challenger_qualities = qualities
                     best_world_scores = dict(
@@ -354,7 +351,7 @@ class DefaultMethod:
                 cheap = DeterministicPolicyOptimizer(
                     num_variants=runtime._config.optimizer_variants,
                     seed=runtime._config.random_seed,
-                    quality_metric=getattr(runtime.validation, "quality_metric", None),
+                    quality_metric=runtime._raw_quality_metric(),
                     prefix_search=runtime._config.optimizer_prefix_search,
                 )
                 try:
@@ -377,7 +374,7 @@ class DefaultMethod:
                         BalancedPolicy(batch_size=1),
                         DepthFirstPolicy(),
                     ][: runtime._config.optimizer_variants]
-                await select_challenger(variants)
+                await select_challenger(variants, incumbent_quality, incumbent_attempts)
                 if best_challenger is None or self.force_developer:
                     # Cheap candidates were already checked. If even the
                     # optimistic path-length bound offers no replay gain,
@@ -397,7 +394,7 @@ class DefaultMethod:
                             self._has_replay_opportunity(
                                 world,
                                 trajectory,
-                                getattr(runtime.validation, "quality_metric", None),
+                                runtime._raw_quality_metric(),
                                 quality,
                             )
                             for world, trajectory, quality in zip(
@@ -430,12 +427,12 @@ class DefaultMethod:
                         persist=persist_developer,
                         **session_options,
                     )
-                    await select_challenger(challengers)
+                    await select_challenger(challengers, incumbent_quality, incumbent_attempts)
             else:
                 challengers = await optimizer.generate(
                     current_policy, incumbent_trajectories, runtime._budget
                 )
-                await select_challenger(challengers)
+                await select_challenger(challengers, incumbent_quality, incumbent_attempts)
 
             # ── Phase 4: Promotion ──
             if best_challenger is not None:
@@ -464,7 +461,7 @@ class DefaultMethod:
                         {
                             "role": role,
                             "world_id": world.world_id,
-                            "raw_quality": raw_quality(trajectory),
+                            "raw_quality": runtime._trajectory_quality(trajectory),
                             "probes": trajectory.total_probes,
                             "attempted_expansions": max(
                                 trajectory.total_probes,
@@ -554,6 +551,17 @@ class DefaultMethod:
                 "usage_scope": "runtime_lifetime_including_validation",
                 "total_worlds": len(runtime._worlds),
                 "policy_promotions": len(runtime._policy_history),
+                "raw_quality": best_overall_quality,
+                "preparation_llm_calls": runtime.usage.calls_for("preparation"),
+                "deployment_llm_calls": runtime.usage.calls_for("deployment"),
+                "preparation_call_limit": (
+                    runtime.usage.calls_for("preparation") + (
+                        runtime._preparation_allowance() or 0
+                    )
+                    if runtime.economy is not None else None
+                ),
+                "remaining_preparation_calls": runtime._preparation_allowance(),
+                "completed_deployments": runtime.usage.completed_deployments,
             },
             policy_history=list(runtime._policy_history),
             worlds=list(runtime._worlds),

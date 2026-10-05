@@ -15,17 +15,23 @@ override, not section 3's shared-W setup. Standalone `StrictReplay` still defaul
 
 Both default paths provide `view.budget_remaining`, including effective node, depth,
 worker and round limits. `None` fields mean unlimited or unavailable. Runtime replay
-inherits the configured model/evaluator call limits and online node/depth limits
+inherits the configured model/evaluator and total-LLM call limits and online node/depth limits
 (defaults: 500 nodes including root, depth 20). Only prefix-visible nodes consume
 the node allowance; the hidden world's size never becomes a policy budget.
 
-Replay charges **one logical model call and evaluator call per revealed probe**.
-An unrecorded continuation consumes a round, without a probe. This is not a simulation
-of provider billing: adapters with multiple model calls per attempt or failed/skipped
-evaluation can have different live counters. Replay cannot predict those costs;
-token, USD, developer-call and wall-time limits are rejected by `StrictReplay(budget=...)`.
-The runtime passes only supported logical limits. An injected engine owns its own
-contract and is not silently reconfigured.
+Replay uses revealed records to account for reported nested provider calls and
+evaluator dispatches, including a charged initial evaluation. Older records without
+usage retain the one-logical-call convention. Agent dispatches have a one-call floor;
+pure evaluators consume evaluator slots but no reported provider calls. Budget data
+from hidden children never determines admission: reported usage is charged after
+revelation, so it cannot prove what an unseen continuation would cost.
+
+An unrecorded continuation consumes a round without a revealed probe. With
+`score_cost="attempted"`, it also receives the conservative logical call charge;
+the default `"revealed"` mode charges revealed probes. These are recorded-cost
+semantics, not a prediction of provider billing. Token, USD, developer-call and
+wall-time limits remain unsupported by `StrictReplay(budget=...)`. An injected
+engine owns its own contract and is not silently reconfigured.
 
 Online K1 and offline K2 remain independent: the default online round limit is 100;
 `DreamRSIConfig.replay_max_rounds` defaults to 1000. Standalone replay can additionally

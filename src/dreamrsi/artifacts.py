@@ -74,6 +74,12 @@ class PolicyCodec:
 
         from dreamrsi import policies
 
+        if type(policy) is policies.CertifiedPolicy:
+            return {
+                "kind": "certified",
+                "policy": self.encode(policy.policy),
+                "contract_id": policy.contract_id,
+            }
         if type(policy) is policies.PrefixPolicy:
             return {
                 "kind": "prefix",
@@ -107,6 +113,13 @@ class PolicyCodec:
 
         from dreamrsi import policies
 
+        if data["kind"] == "certified":
+            if set(data) != {"kind", "policy", "contract_id"}:
+                raise PolicyError("Invalid certified policy artifact")
+            try:
+                return policies.CertifiedPolicy(self.decode(data["policy"]), data["contract_id"])
+            except ValueError as exc:
+                raise PolicyError("Invalid certified policy contract") from exc
         if data["kind"] == "prefix":
             if set(data) != {"kind", "policy", "max_rounds"}:
                 raise PolicyError("Invalid prefix policy artifact")
@@ -128,7 +141,7 @@ class PolicyCodec:
         if (
             data["kind"] != "builtin"
             or data["name"] not in policies.__all__
-            or data["name"] == "PrefixPolicy"
+            or data["name"] in ("PrefixPolicy", "CertifiedPolicy")
         ):
             raise PolicyError("Unknown policy codec")
         policy = getattr(policies, data["name"])()

@@ -6,6 +6,8 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any, Self
 
+from ._schema import validate_schema
+
 if TYPE_CHECKING:
     from .budget import Budget
     from .discovery import NodeStatus
@@ -41,6 +43,7 @@ class PolicyVersion:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         d = data.copy()
         if "deployment_status" in d:
             d["deployment_status"] = PolicyDeploymentStatus(d["deployment_status"])
@@ -59,6 +62,7 @@ class PolicyDecision:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         return cls(**{k: v for k, v in data.items() if k != "_schema_version"})
 
 
@@ -79,6 +83,7 @@ class NodeSummary:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         from .discovery import NodeStatus
 
         d = data.copy()
@@ -114,6 +119,7 @@ class PolicyView:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
+        validate_schema(data, cls.__name__)
         from .budget import Budget
 
         d = data.copy()

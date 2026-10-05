@@ -7,12 +7,18 @@ has the `dreamrsi-package` topic and a GitHub Release containing one
 GitHub for that topic and sorts by
 stars; stars are the popularity signal, not a quality or safety guarantee.
 
-Install `0.2.0a2` from PyPI to use the commands below:
+Package sharing is available in the published alpha and the Beta source. For the
+currently published version:
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a2
+python -m pip install --upgrade dreamrsi==0.2.0a4
 dreamrsi --help
 ```
+
+For the locally prepared Beta, install this checkout with `python -m pip install -e .`.
+Legacy bundles remain readable. Bundles containing `CertifiedPolicy` require
+`0.3.0b1` or newer and a matching recipient quality contract; their bound comes
+from the recipient's verified task semantics, not from a package's popularity.
 
 `list` and `install` need internet access but no account. Publishing needs
 [GitHub CLI](https://cli.github.com/) (`gh`); Dream-RSI starts its browser login

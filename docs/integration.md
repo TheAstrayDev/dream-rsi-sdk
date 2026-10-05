@@ -118,6 +118,19 @@ interpreter. The bundle contains recorded task/tree data and policy source, so r
 before sharing. Non-JSON state and unregistered custom policy codecs must be adapted by
 the application first.
 
+Held-out task reservations are atomic in `InMemoryStore` and `SQLiteStore`.
+Two memory instances sharing one built-in store, or separate SQLite connections
+to the same database, cannot silently reserve the same validation task twice.
+Custom stores may provide the optional async method
+`compare_and_swap_checkpoint(key, expected, data) -> bool`: return `True` only
+when the stored checkpoint still equals `expected` and the replacement is atomic;
+use `None` as the expected value for an absent checkpoint.
+An existing custom store without this method remains compatible, with reservation
+calls serialized within one `AdaptivePolicyMemory` instance. Sharing that custom
+store across instances or processes requires its atomic method or external
+serialization. This protects holdout admission; other policy and world updates
+still require a single writer per memory namespace and task family.
+
 See the [architecture audit](../ARCHITECTURE.md) and [README](../README.md) for current limits.
 
 ## Replaceable replay, objective and method
