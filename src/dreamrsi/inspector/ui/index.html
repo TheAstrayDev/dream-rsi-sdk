@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Dream-RSI · Live Inspector</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M8 8L16 16L24 8M16 16V26' stroke='%2377d9c2' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="wordmark" href="#" aria-label="Dream-RSI Inspector home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 8L16 17L25 8M16 17V26"/><circle cx="7" cy="8" r="3"/><circle cx="25" cy="8" r="3"/><circle cx="16" cy="26" r="3"/></svg>
+      <span>Dream-RSI<span class="wordmark-sub">INSPECTOR</span></span>
+    </a>
+    <div class="session-heading"><span class="eyebrow">WORKSPACE</span><span id="session-title">Waiting for a run</span></div>
+    <div class="header-actions"><span id="connection" class="connection"><i></i>Connecting</span><button id="export" class="button quiet">Export report <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <div id="notice" class="notice" role="status" hidden></div>
+  <main class="workspace">
+    <aside class="run-rail" aria-label="Recorded runs">
+      <div class="rail-heading"><h2>Runs</h2><span id="run-count" class="muted">0</span></div>
+      <div id="runs" class="run-list"></div>
+      <div class="rail-note"><span class="small-mark"></span><p>Local by design.<br>Observation makes no model requests.</p></div>
+    </aside>
+    <section class="main-panel" aria-label="Run inspector">
+      <div class="run-heading"><div><p class="eyebrow" id="run-kind">RECORDED EXECUTION</p><h1 id="run-title">Your search, made visible.</h1></div><span id="run-status" class="status-pill">Waiting</span></div>
+      <div class="metrics" aria-label="Execution metrics">
+        <div><span class="metric-label" id="quality-label">Evaluator score</span><strong id="quality">—</strong><span id="quality-note" class="metric-note">No evaluated answer yet</span></div>
+        <div><span class="metric-label" id="calls-label">All-in calls</span><strong id="calls">—</strong><span id="calls-note" class="metric-note">Preparation + application</span><span id="budget-note" class="metric-note"></span></div>
+        <div><span class="metric-label">Tokens / cost</span><strong class="cost-value" id="tokens">Unknown</strong><span id="usd" class="metric-note">Cost not reported</span></div>
+      </div>
+      <div class="view-tabs" role="tablist" aria-label="Inspector view">
+        <button id="tree-tab" class="tab selected" role="tab" aria-selected="true" aria-controls="tree-view">Discovery tree</button>
+        <button id="policy-tab" class="tab" role="tab" aria-selected="false" aria-controls="policy-view">Policy comparison <span id="comparison-count" class="tab-count" hidden></span></button>
+        <select id="mobile-runs" aria-label="Select recorded run"></select>
+      </div>
+      <div id="tree-view" class="tree-view" role="tabpanel" aria-labelledby="tree-tab">
+        <div class="graph-toolbar"><div class="legend"><span><i class="legend-active"></i>Active</span><span><i class="legend-best"></i>Best found</span><span><i class="legend-failed"></i>Failed</span></div><div class="graph-actions"><button id="follow" class="button small toggled" aria-pressed="true">Follow active</button><button id="fit" class="icon-button" aria-label="Fit tree to view" title="Fit tree to view">⛶</button><button id="zoom-out" class="icon-button" aria-label="Zoom out">−</button><button id="zoom-in" class="icon-button" aria-label="Zoom in">+</button></div></div>
+        <div id="graph-shell" class="graph-shell">
+          <svg id="graph" role="group" aria-label="Discovery tree. Use Tab to select nodes, or drag to pan." tabindex="0"><g id="world"><g id="edges"></g><g id="nodes"></g></g></svg>
+          <div id="empty" class="empty-state"><div class="empty-symbol" aria-hidden="true"><span></span><span></span><span></span></div><h2>Follow the work as it happens.</h2><p>Connect <code>LiveInspector()</code> to your runtime.<br>Nodes appear here as actual attempts begin.</p><pre>with LiveInspector() as inspector:
+    sdk = DreamRSI(..., inspector=inspector)
+    result = await sdk.run(task)</pre><span class="muted">Try <code>dreamrsi watch --demo</code> without a model.</span></div>
+          <div id="graph-caption" class="graph-caption" hidden><span id="node-count"></span><span id="tree-warning"></span></div>
+        </div>
+      </div>
+      <div id="policy-view" class="policy-view" role="tabpanel" aria-labelledby="policy-tab" hidden>
+        <div class="comparison-intro"><span class="eyebrow">RECORDED REPLAY</span><h2>Same world. Different decisions.</h2><p>Compare only outcomes present in a frozen tree. A missing continuation is unknown, not a failed answer.</p></div>
+        <div id="comparisons"></div>
+        <div id="comparison-empty" class="comparison-empty"><p>No comparison recorded for this tree.</p><pre>await inspector.compare(sdk, world, [policy_a, policy_b])</pre><p class="muted">Uses the configured replay engine. Never promotes a policy.</p></div>
+        <div id="policy-reviews"></div>
+      </div>
+      <footer class="timeline"><div class="timeline-top"><div><button id="play" class="icon-button" aria-label="Play recorded history" title="Play recorded history">▶</button><span id="timeline-mode">Live view</span><span id="event-label" class="event-label">Waiting for events</span></div><button id="go-live" class="button small">Go live <i class="live-dot"></i></button></div><label class="sr-only" for="scrubber">Position in recorded history</label><input id="scrubber" type="range" min="0" max="0" value="0"><div class="timeline-bottom"><span id="time-start">0:00</span><span id="history-caption">Moving the timeline does not repeat model calls.</span><span id="time-current">0:00</span></div></footer>
+    </section>
+    <aside id="details" class="details-panel" aria-label="Selected node details">
+      <div class="details-heading"><h2>Node details</h2><button id="close-details" class="icon-button" aria-label="Close node details">×</button></div>
+      <div id="detail-empty" class="detail-empty"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 10L24 24L36 10M24 24V38"/><circle cx="12" cy="10" r="4"/><circle cx="36" cy="10" r="4"/><circle cx="24" cy="38" r="4"/></svg><h3>Every branch has a story.</h3><p>Select a node to see its answer, evaluation and recorded policy decision.</p></div>
+      <div id="detail-content" hidden></div>
+      <div class="details-footnote">Shows recorded answers and decisions.<br>Private model reasoning is not inferred.</div>
+    </aside>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>

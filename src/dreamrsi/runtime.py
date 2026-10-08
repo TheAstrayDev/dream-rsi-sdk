@@ -161,6 +161,7 @@ class DreamRSI:
         usage_limits: dict[str, Usage] | None = None,
         quality: QualityContract | None = None,
         economy: EconomyPlan | None = None,
+        inspector: Any | None = None,
     ) -> None:
         # Resolve adapter
         if adapter is not None:
@@ -252,6 +253,13 @@ class DreamRSI:
 
         # Events
         self._emitter = EventEmitter()
+        self.inspector = inspector
+        if inspector is not None:
+            if not callable(getattr(inspector, "record", None)) or not callable(
+                getattr(inspector, "on_event", None)
+            ):
+                raise ConfigurationError("inspector must provide record and on_event")
+            self._emitter.on(inspector.on_event)
         if callbacks:
             for cb in callbacks:
                 self._emitter.add_callback(cb)
@@ -357,6 +365,61 @@ class DreamRSI:
         await self._store.save_event(event)
         await self._emitter.emit(event)
 
+    def _inspect(self, event_type: str, *, run_id: str | None = None, **data: Any) -> None:
+        if self.inspector is not None:
+            try:
+                self.inspector.record(event_type, run_id=run_id, data=data)
+            except Exception:
+                logger.debug("Inspector observation failed", exc_info=True)
+
+    def _inspect_node(self, node: Any, run_id: str) -> None:
+        if self.inspector is not None:
+            raw = node.metadata.get("quality_contract")
+            evaluation = node.metadata.get("evaluation")
+            self._inspect("node_snapshot", run_id=run_id, node={
+                "id": node.id, "parent_id": node.parent_id, "depth": node.depth,
+                "order": node.creation_order, "score": node.score,
+                "status": node.status.value, "observation": node.observation,
+                "attempt_id": node.metadata.get("attempt_id"),
+                "evaluation_status": (
+                    evaluation.get("status") if isinstance(evaluation, dict) else None
+                ),
+                "raw_quality": raw.get("raw_quality") if isinstance(raw, dict) else None,
+                "proposal": node.proposal, "state": node.state, "metadata": node.metadata,
+            })
+
+    def _inspect_usage(self, run_id=None, local=None, stage=None) -> None:
+        if self.inspector is None:
+            return
+        records = [
+            record for record in self.usage.records
+            if record["stage"] in ("agent", "developer")
+            or record["usage"]["provider_calls"] > 0
+            or record["usage"]["input_tokens"] + record["usage"]["output_tokens"] > 0
+            or record["usage"]["usd"] > 0
+        ]
+        journaled = sum(
+            max(int(r["stage"] in ("agent", "developer")), r["usage"]["provider_calls"])
+            for r in records
+        )
+        known = (bool(records) and all(not r["estimated"] for r in records)
+                 and journaled == self.usage.spent["total_llm_calls"])
+        self._inspect(
+            "usage", run_id=run_id,
+            spent=dict(self.usage.spent), held=dict(self.usage.held),
+            preparation=self.usage.calls_for("preparation"),
+            deployment=self.usage.calls_for("deployment"),
+            tokens=(self.usage.spent["tokens"] if known and all(
+                r["usage"]["input_tokens"] + r["usage"]["output_tokens"] > 0
+                for r in records) else None),
+            usd=(self.usage.spent["usd"] if known and all(
+                r["usage"]["usd"] > 0 for r in records) else None),
+            stage=stage,
+            historical=(self.economy.historical_preparation_calls if self.economy else 0),
+            run_spent=dict(local.spent) if local is not None else None,
+            run_held=dict(local.held) if local is not None else None,
+        )
+
     # ── Core API ───────────────────────────────────────────────
 
     async def run(self, task: Any) -> RunResult:
@@ -397,11 +460,17 @@ class DreamRSI:
 
             record.metadata["task_key"] = task_key(task)
         await self._store.save_run(record)
+        self._inspect("run_opened", run_id=run_id, tree_id=tree.tree_id,
+                      policy=type(policy).__name__, task=task, budget=budget.to_dict(),
+                      purpose=self._usage_purpose.get(),
+                      quality_contract=self.quality.id if self.quality else None)
+        self._inspect_usage(run_id, run_usage)
         await self._emit(EventType.RUN_STARTED, run_id=run_id)
 
         cancellation_status = {}
 
         async def expand(parent, round_num):
+            attempt_started = time.monotonic()
             # Each branch owns its state. Adapter may provide custom snapshot logic.
             clone = getattr(self._adapter, "clone_state", copy.deepcopy)
             state = parent.state
@@ -426,13 +495,15 @@ class DreamRSI:
                             "parent_id": parent.id,
                         },
                     )
+                    self._inspect_usage(run_id, run_usage, "agent")
                     proposal = await invoke(self._adapter.propose, state, context)
                     execution = await invoke(self._adapter.execute, proposal, state, context)
                     observation = await invoke(self._adapter.observe, execution, state)
                     return proposal, execution, observation
 
                 proposal, execution, observation = await self._charge(
-                    "agent", agent_attempt, context=context, local=run_usage, costs=costs
+                    "agent", agent_attempt, context=context, local=run_usage, costs=costs,
+                    inspection_run_id=run_id,
                 )
                 evaluation = await self._charge(
                     "evaluator",
@@ -442,6 +513,7 @@ class DreamRSI:
                     context=context,
                     local=run_usage,
                     costs=costs,
+                    inspection_run_id=run_id,
                 )
                 next_state = await invoke(self._adapter.next_state, observation, state)
                 metadata = {
@@ -494,6 +566,10 @@ class DreamRSI:
                         "usage": context.get("usage", {}),
                     },
                 ), evaluation
+            finally:
+                self._inspect("attempt_finished", run_id=run_id,
+                              attempt_id=context["attempt_id"], parent_id=parent.id,
+                              latency_ms=(time.monotonic() - attempt_started) * 1000)
 
         async def collect():
             nonlocal rounds_done, stop_reason
@@ -530,6 +606,7 @@ class DreamRSI:
                         evaluation = await self._charge(
                             "evaluator", self._evaluator.evaluate, candidate, context,
                             context=context, local=run_usage, costs=costs,
+                            inspection_run_id=run_id,
                         )
                     except (EvaluationError, BudgetExceeded) as exc:
                         root.metadata["initial_evaluation_error"] = str(exc)
@@ -544,6 +621,7 @@ class DreamRSI:
                         root.metadata["usage"] = copy.deepcopy(context.get("usage", {}))
                         root.cost = sum(u["usd"] for u in context.get("usage", {}).values())
             last_round = None
+            self._inspect_node(root, run_id)
             for round_num in range(1, max_rounds + 1):
                 if self.usage.breached or run_usage.breached:
                     stop_reason = "budget"
@@ -590,6 +668,13 @@ class DreamRSI:
                     break
                 decision = await invoke(episode_policy.decide, view)
                 batch = validate_batch(decision, view, workers)[:slots]
+                if self.inspector is not None:
+                    self._inspect("policy_decision", run_id=run_id, round=round_num,
+                                  policy=type(episode_policy).__name__, expand=list(batch),
+                                  proposed=list(decision.expand), stop=decision.stop,
+                                  reason=getattr(decision, "reason", None),
+                                  best_score=view.best_score, remaining=slots,
+                                  frontier=[n.to_dict() for n in view.frontier])
                 if not batch:
                     stop_reason = "policy"
                     break
@@ -624,6 +709,7 @@ class DreamRSI:
                 for parent_id, (fields, evaluation) in zip(batch, results, strict=True):
                     node = tree.add_node(parent_id=parent_id, **fields)
                     self._stamp_quality(node)
+                    self._inspect_node(node, run_id)
                     revealed_this_round.append(node.id)
                     if evaluation is not None:
                         await self._store.save_evaluation(evaluation)
@@ -668,12 +754,14 @@ class DreamRSI:
                 record.status = RunStatus.FAILED
                 record.completed_at = time.time()
                 await self._store.save_run(record)
+                self._inspect("run_failed", run_id=run_id, status="FAILED")
                 raise
             stop_reason = "wall_time"
         except BaseException:
             record.status = RunStatus.FAILED
             record.completed_at = time.time()
             await self._store.save_run(record)
+            self._inspect("run_failed", run_id=run_id, status="FAILED")
             raise
         if tree.root_id is None:
             tree.create_root()
@@ -715,9 +803,14 @@ class DreamRSI:
             },
         )
         await self._emit(EventType.RUN_COMPLETED, run_id=run_id)
+        self._inspect_usage(run_id, run_usage)
+        self._inspect("run_result", run_id=run_id, best_node_id=result.best_node_id,
+                      best_score=result.best_score, costs=costs.to_dict(),
+                      metrics=result.metrics, status=record.status.value)
         return result
 
-    async def _charge(self, stage, fn, *args, context=None, local=None, costs=None):
+    async def _charge(self, stage, fn, *args, context=None, local=None, costs=None,
+                      inspection_run_id=None):
         ceiling = self._usage_limits.get(stage, Usage())
         purpose = self._usage_purpose.get()
         if purpose == "preparation" and self.economy is not None:
@@ -776,6 +869,7 @@ class DreamRSI:
                     self._campaign_id + ":usage", self.usage.to_dict()
                 )
             charged = measured if measured is not None else ceiling
+            self._inspect_usage(inspection_run_id, local, stage)
             if context is not None:
                 from dataclasses import asdict
 

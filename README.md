@@ -13,6 +13,7 @@
 <p align="center"><strong>Bring your agent. Preserve verified quality. Account for every model request.</strong></p>
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
+  <a href="#live-inspector">Live Inspector</a> ·
   <a href="#architecture">How it works</a> ·
   <a href="#package-cli">Package sharing</a> ·
   <a href="#latest-real-model-result">Latest local result</a> ·
@@ -43,7 +44,10 @@ It is designed for developers who already have a **generate → evaluate → ref
 and want to experiment with how their search branches, batches work, and stops.
 The core has no dependency on a model provider or agent framework.
 
-**Version 0.3.0b1 adds opt-in quality protection and complete call accounting.**
+**Version 0.3.0b2 adds a local Live Inspector and a shorter setup path.**
+Watch actual exploration, inspect recorded decisions and export a report without
+hosting or additional runtime dependencies. Quality protection and complete call
+accounting remain available:
 With a `QualityContract`, the strict mode preserves the original search and stops
 only after attaining a mathematically sound quality bound. Without that contract,
 the default optimizer derives shorter prefixes of the incumbent policy from
@@ -60,26 +64,37 @@ evidence of a universal speedup.
 | Runtime | Python 3.11+ · zero required third-party dependencies |
 | Integration | Sync/async callables · stateful function adapter · full agent protocol |
 | Validation | Regression tests · Ruff · Pyright · wheel build and installation |
-| Version | `0.3.0b1` · Beta prerelease |
-| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.3.0b1/) · install the Beta with `--pre` |
+| Version | `0.3.0b2` · Beta prerelease |
+| Distribution | [PyPI](https://pypi.org/project/dreamrsi/0.3.0b2/) · install the Beta with `--pre` |
+| Local interface | Animated discovery trees · recorded decisions · offline replay comparisons · HTML reports |
 | Benchmark status | Narrow Bonsai Q2 Lasso follow-up: 37.5% fewer fresh-campaign calls with paired quality preserved after control recovery; broader economics unverified |
 
-**Try it without an API key:** run the [replay lab](examples/02_replay_lab.py) to record a toy
-search and compare three policies. It reports whether replay caused any additional agent
-or evaluator calls. This is an executable mechanics demo, not an LLM performance benchmark.
+**Try it without an API key:** install the package and run `dreamrsi watch --demo`.
+The browser shows a deterministic SDK simulation with actual adapter attempts.
+It is a mechanics demonstration, not an LLM performance benchmark.
 
-## What's new 0.3.0b1
+## What's new 0.3.0b2
 
-- **Quality contracts:** preserve the original search and select the best valid raw-quality answer; stop only at a sound attained bound.
-- **All-in budgets:** dynamic preparation limits include historical spending, actual deployment, reported nested calls and failed requests.
-- **Sandbox profiles:** Docker-free presets, JSON settings and a bounded validated-code cache with fresh execution state.
-- **Reliable reuse:** atomic holdout reservations, isolated callback inputs and restored sandbox profiles.
-- **Beta compatibility:** public `PolicyDeveloper`, schema guards, legacy loaders and installed-wheel CLI/process checks.
+- **Live Inspector:** animated active branches, node details, recorded policy reasons, pan/zoom, branch collapse and history playback.
+- **Shorter setup:** `dreamrsi init` creates a runnable example; `doctor` checks the installation and journal; `inspect` validates a shared bundle.
+- **Offline comparison:** view measured policy replay and its recorded path. Missing continuations remain unknown; comparisons do not promote policies.
+- **Portable reports:** export one self-contained HTML file and use `result.report()` for a concise console report.
+- **Measured telemetry:** separate quality, preparation/application calls and in-flight reservations; incomplete token and dollar usage stays unknown.
+
+![Live Inspector showing actual active branches in a deterministic local SDK demonstration](assets/inspector-live.png)
+
+The Inspector is opt-in and uses a local SQLite journal plus a read-only browser
+viewer. It does not steer policy selection or make model requests. Existing
+applications retain their search behavior; observation adds CPU and disk overhead.
+See the [release notes](docs/releases/0.3.0b2.md) and
+[verification record](docs/verification/0.3.0b2.md).
+
+### Quality protection and all-in accounting
 
 ![Quality protection: keep the original search, retain the best answer, stop only at a proven quality bound](assets/quality-guard.svg)
 
 **Quality and cost are separate constraints.** A recorded plateau can miss a later
-improvement. The new strict mode retains the original policy's decisions and complete
+improvement. The strict mode retains the original policy's decisions and complete
 batches, selects the answer with the best valid **raw quality**, and stops only when
 that quality exactly reaches a proven task maximum. Unknown bounds continue the
 original search. Learned fixed caps cannot silently replace it.
@@ -174,7 +189,7 @@ below; research-scale performance remains a separate validation task.
 [Quality contract and proof](docs/quality-contract.md) ·
 [All-in accounting](docs/all-in.md) ·
 [Compatibility](docs/compatibility.md) ·
-[Beta release notes](docs/releases/0.3.0b1.md) ·
+[Release notes](docs/releases/0.3.0b2.md) ·
 [Figure data and reproducibility](docs/verification/0.3.0b1.md) ·
 [Runnable mechanics demo](examples/17_certified_quality.py)
 
@@ -233,13 +248,49 @@ See the [conditions, exact errors and curated figure data](docs/verification/bon
 
 Earlier policy-code and discovery experiments remain documented separately: [Bonsai Q2 fixture](docs/experiments/ternary-bonsai-diverse-2026-09-24.md) and [GPT-6 Luna discovery](docs/experiments/luna-xhigh-discovery-v1.md). For previous version changes, see [CHANGELOG.md](CHANGELOG.md).
 
+<a id="live-inspector"></a>
+## Live Inspector
+
+Watch your search in a local browser: actual active branches animate, completed
+answers remain visible, and selecting a node reveals its evaluation and recorded
+policy decision. The timeline replays history without repeating model requests.
+Quality, preparation/application calls and reported costs stay separate.
+
+Included in the `0.3.0b2` package. Try the deterministic interface demo without
+an API key:
+
+```bash
+python -m pip install --pre --upgrade dreamrsi==0.3.0b2
+python -m dreamrsi watch --demo
+```
+
+Connect your application with `DreamRSI(..., inspector=inspector)` inside
+`with LiveInspector() as inspector:`, then run `dreamrsi watch` in a second
+terminal. The observer uses local SQLite and a read-only browser viewer, with no
+hosting or additional runtime dependency. It does not change the optimizer or
+promote policies. Offline policy comparisons and self-contained HTML reports
+are supported. See the [Inspector guide](docs/inspector.md) for runnable setup,
+controls, accounting scope and privacy options. The demo is not an LLM benchmark.
+
+For a runnable application, create and run the starter:
+
+```bash
+dreamrsi init
+python dreamrsi_app.py
+```
+
+Then run `dreamrsi watch` from the same directory. The generated application
+records its tree automatically. Replace its agent and evaluator with your own;
+`init` refuses to overwrite an existing file. Run `dreamrsi doctor` if setup needs
+checking. Policy-memory storage and package imports remain explicit integrations.
+
 <a id="quickstart"></a>
 ## Install and try
 
 You need **Python 3.11+**. Install the Beta prerelease:
 
 ```bash
-python -m pip install --pre --upgrade dreamrsi==0.3.0b1
+python -m pip install --pre --upgrade dreamrsi==0.3.0b2
 ```
 
 To run the repository examples from a source checkout:
@@ -663,6 +714,7 @@ successful. Further research evaluation is listed separately.
 | **05 · Dreaming with code** ✓ | LLM developer, revision feedback, bounded source/process execution | Source revision, repair, promotion and reload tests; real local developer evidence above |
 | **06 · Provider integrations** ✓ | Model-client adapters, callable agents, optional LangChain, measured usage | Nested request accounting, preparation/deployment caps and adapter tests |
 | **07 · Beta contracts** ✓ | Public protocols, schema guards, bundle compatibility, wheel gates | Legacy loaders, rejected unknown schemas, CLI and sandbox in an isolated installed wheel |
+| **08 · Local Inspector** ✓ | Animated trees, recorded decisions, replay comparison, portable reports and setup commands | Observer invariance tests, installed-wheel starter and browser interaction checks |
 
 **Research work remains:** independent prospective
 comparisons on more task families, practical task bounds, measured tokens/dollars,
@@ -712,6 +764,7 @@ src/dreamrsi/
 ├── evaluation/     # scoring and composition
 ├── storage/        # in-memory and SQLite storage
 ├── events/         # events and callbacks
+├── inspector/      # local journal, live tree viewer and HTML reports
 ├── models/         # shared data types
 └── protocols/      # extension contracts
 ```

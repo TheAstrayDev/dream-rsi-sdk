@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dreamrsi"
-version = "0.3.0b1"
-description = "Independent Dream-RSI-inspired SDK for quality-preserving stopping, policy replay and all-in accounting."
+version = "0.3.0b2"
+description = "Independent Dream-RSI-inspired SDK with quality protection, policy replay and a local live tree inspector."
 readme = "docs/PYPI_README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"

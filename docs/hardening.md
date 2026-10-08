@@ -1,11 +1,12 @@
 # Architecture hardening status
 
-Source status for the locally prepared 0.3.0b1 Beta, October 4, 2026. Reference:
+Implementation status for the 0.3.0b2 Beta, October 8, 2026. Reference:
 [Dream-RSI section 3 and appendix B.2](https://arxiv.org/html/2609.14858v1).
 Use the [integration and recovery guide](research-loop.md) for long campaigns and
 the [compatibility contract](compatibility.md) before importing saved policies.
 This page describes implemented behavior and its boundaries; it does not claim a
-new real-model benchmark result or an already published Beta release.
+new real-model benchmark result. See the [current release notes](releases/0.3.0b2.md)
+for the local Inspector and simpler setup commands.
 
 | Original gap | Implemented response | Boundary / evidence |
 | --- | --- | --- |

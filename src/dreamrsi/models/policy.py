@@ -55,6 +55,7 @@ class PolicyDecision:
     expand: list[str]
     parallelism: int | None = None
     stop: bool = False
+    reason: str | None = None
     _schema_version: str = dataclasses.field(default="1", init=False, repr=False)
 
     def to_dict(self) -> dict[str, Any]:

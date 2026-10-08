@@ -484,6 +484,11 @@ class DefaultMethod:
                     )
 
                 decision = await promotion.evaluate(inc_version, chl_version, evidence)
+                runtime._inspect("policy_review", round=t,
+                                 incumbent=inc_version.name or type(current_policy).__name__,
+                                 challenger=chl_version.name or type(best_challenger).__name__,
+                                 evidence=evidence, outcome=decision.outcome.value,
+                                 reason=decision.reason)
                 chl_version.validation_scores = evidence.get("validation_scores", {})
                 chl_version.metadata["promotion"] = decision.to_dict()
 

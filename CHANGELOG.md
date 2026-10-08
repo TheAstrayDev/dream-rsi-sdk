@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.0b2 — Live Inspector, 2026-10-08
+
+- Add opt-in `LiveInspector` capture with a bounded background SQLite writer
+  and a read-only local browser viewer. Animate actual in-flight branches;
+  inspect recorded answers, quality, failures and optional policy reasons.
+- Add pan/zoom, branch collapse, follow-active mode, timeline playback,
+  keyboard navigation and reduced-motion support for desktop and mobile.
+- Record offline comparisons through the configured replay engine, preserving
+  unknown continuations and the effective policy under quality contracts.
+  Comparison never promotes a policy.
+- Add `dreamrsi watch`, `init`, `doctor` and `inspect`; generate a runnable
+  starter without overwriting existing files. Add `RunResult.report()`.
+- Export standalone HTML reports with the selected run's history and bundled
+  assets; no hosting, Node.js, CDN or new runtime dependency is required.
+- Display settled, reserved and declared historical call costs separately from
+  quality. Keep incomplete token and dollar usage unknown.
+- Bound captured content and redact common credential patterns without running
+  custom object serializers. Document privacy controls and observer overhead.
+- Extend installed-wheel gates to exercise the Inspector's HTTP assets and CLI.
+  Include screenshots, installation instructions and a focused verification record.
+
+Existing quality contracts, budgets and policy-selection behavior are unchanged.
+The Inspector is optional instrumentation, not a new reasoning algorithm or
+proof of improved all-in ROI. See the [release notes](docs/releases/0.3.0b2.md).
+
 ## 0.3.0b1 — Beta, 2026-10-05
 
 - Add opt-in `QualityContract` and `CertifiedPolicy`: retain the original search

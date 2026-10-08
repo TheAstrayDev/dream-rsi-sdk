@@ -1,4 +1,4 @@
-![Dream-RSI SDK Beta](https://raw.githubusercontent.com/TheAstrayDev/dream-rsi-sdk/v0.3.0b1/assets/banner.png)
+![Dream-RSI SDK Beta](https://raw.githubusercontent.com/TheAstrayDev/dream-rsi-sdk/v0.3.0b2/assets/banner.png)
 
 # Dream-RSI SDK · Beta
 
@@ -8,12 +8,12 @@ An independent, unofficial Python SDK inspired by Dream-RSI research. Maintained
 **TheAstrayDev**, who is not a Google or Google DeepMind employee. This is a personal
 research initiative, not a commercial Google development, official SDK or endorsed product.
 
-Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.3.0b1**.
+Python 3.11+ · zero core third-party dependencies · Apache-2.0 · version **0.3.0b2**.
 
 ## Install
 
 ```bash
-python -m pip install --pre --upgrade dreamrsi==0.3.0b1
+python -m pip install --pre --upgrade dreamrsi==0.3.0b2
 ```
 
 For a source checkout, install with `python -m pip install -e .`.
@@ -21,7 +21,55 @@ For a source checkout, install with `python -m pip install -e .`.
 The package includes the Python API and the `dreamrsi` command. Publishing policy
 packages to GitHub additionally requires GitHub CLI (`gh`).
 
-## What's new 0.3.0b1
+## What's new 0.3.0b2
+
+**Live Inspector** makes recorded exploration visible in a local browser:
+animated active branches, node details, optional policy reasons, history playback
+and policy comparisons on recorded worlds. Pan, zoom and collapse branches;
+inspect raw quality and the preparation/application call ledger separately.
+Incomplete tokens and dollar usage stay unknown.
+
+![Live Inspector: a deterministic local SDK simulation with actual in-flight adapter attempts](https://raw.githubusercontent.com/TheAstrayDev/dream-rsi-sdk/v0.3.0b2/assets/inspector-live.png)
+
+Try the interface without an API key:
+
+```bash
+dreamrsi watch --demo
+```
+
+The demonstration uses no LLM and is not a performance benchmark. Create a short
+runnable application and record your first tree:
+
+```bash
+dreamrsi init
+python dreamrsi_app.py
+dreamrsi watch
+```
+
+Replace the generated agent and evaluator with your integration. `init` refuses
+to overwrite an existing file. Attach `LiveInspector()` to an existing runtime
+with `DreamRSI(..., inspector=inspector)` and keep the context manager open during
+execution. The observer uses a local SQLite journal and does not steer search.
+Persistent policy memory remains a separate explicit integration.
+
+`dreamrsi doctor` checks local setup; `dreamrsi inspect FILE` validates a policy/tree
+bundle. `result.report()` prints a concise per-run summary. Export a selected run
+as a self-contained HTML report with the viewer's **Export report** button or
+`dreamrsi watch --export report.html`.
+
+No hosting, Node.js, CDN or additional runtime dependency is required. The server
+is read-only and binds to loopback. Capture can contain private task data; use
+`include_content=False` when appropriate and review reports before sharing them.
+Observer CPU/disk overhead can affect very tight time limits. The default
+`StrictReplay` comparison makes no agent/evaluator calls; custom components keep
+their own behavior. Comparisons do not promote policies or prove unseen-task quality.
+
+See the [Inspector guide](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/v0.3.0b2/docs/inspector.md),
+[release notes](https://github.com/TheAstrayDev/dream-rsi-sdk/releases/tag/v0.3.0b2)
+and [verification record](https://github.com/TheAstrayDev/dream-rsi-sdk/blob/v0.3.0b2/docs/verification/0.3.0b2.md).
+Existing quality protection and all-in accounting remain available below.
+
+## Quality protection and all-in accounting
 
 `QualityContract` protects the supplied original policy's search and complete
 batches. Stop only when the best valid raw quality exactly reaches a proven task

@@ -7,15 +7,14 @@ has the `dreamrsi-package` topic and a GitHub Release containing one
 GitHub for that topic and sorts by
 stars; stars are the popularity signal, not a quality or safety guarantee.
 
-Package sharing is available in the published alpha and the Beta source. For the
-currently published version:
+Package sharing is available in the published Beta. Install the current release:
 
 ```bash
-python -m pip install --upgrade dreamrsi==0.2.0a4
+python -m pip install --pre --upgrade dreamrsi==0.3.0b2
 dreamrsi --help
 ```
 
-For the locally prepared Beta, install this checkout with `python -m pip install -e .`.
+For development from source, install this checkout with `python -m pip install -e .`.
 Legacy bundles remain readable. Bundles containing `CertifiedPolicy` require
 `0.3.0b1` or newer and a matching recipient quality contract; their bound comes
 from the recipient's verified task semantics, not from a package's popularity.

@@ -20,7 +20,10 @@ from pathlib import Path
 async def check_installed_wheel() -> None:
     import dreamrsi
     from dreamrsi import (
+        Budget,
+        DreamRSI,
         EconomyPlan,
+        LiveInspector,
         PolicyArtifact,
         PolicyCodec,
         PolicySandbox,
@@ -54,6 +57,26 @@ async def check_installed_wheel() -> None:
         for point in distribution.entry_points
     )
     assert isinstance(dreamrsi.LLMPolicyDeveloper(lambda request: ""), PolicyDeveloper)
+
+    from urllib.request import urlopen
+
+    from dreamrsi.inspector import InspectorServer
+
+    with (
+        tempfile.TemporaryDirectory() as directory,
+        LiveInspector(Path(directory) / "journal.sqlite3") as inspector,
+    ):
+        runtime = DreamRSI(agent=lambda task: task, evaluator=float,
+                           budget=Budget(model_calls=1), inspector=inspector)
+        observed = await runtime.run(1)
+        assert "Agent dispatches: 1" in observed.report()
+        assert inspector.flush()
+        with InspectorServer(inspector.path) as server:
+            with urlopen(server.url + "/api/state", timeout=3) as response:
+                assert json.load(response)["selected_run"] == observed.run_id
+            for name in ("app.js", "style.css", ""):
+                with urlopen(server.url + "/" + name, timeout=3) as response:
+                    assert response.status == 200 and response.read()
 
     with tempfile.TemporaryDirectory() as directory:
         profile = SandboxConfig.preset("small", max_steps=100_000)
@@ -121,10 +144,10 @@ async def check_installed_wheel() -> None:
         [sys.executable, "-I", "-m", "dreamrsi", "--help"],
     ):
         result = subprocess.run(invocation, check=True, capture_output=True, text=True)
-        assert "publish" in result.stdout and "install" in result.stdout
+        assert all(name in result.stdout for name in ("publish", "install", "watch", "doctor"))
     print(
         f"Installed wheel {dreamrsi.__version__}: "
-        "import, recursive codecs, quality, economy, worker and CLI passed"
+        "import, recursive codecs, quality, economy, worker, inspector and CLI passed"
     )
 
 

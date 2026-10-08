@@ -524,10 +524,36 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dreamrsi",
         description=(
-            "Share Dream-RSI policies and replay trees through public GitHub repositories."
+            "Run a local inspector and share Dream-RSI policies and replay trees."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
+
+    watch_parser = commands.add_parser("watch", help="Open the local live tree inspector")
+    watch_parser.add_argument("--journal", type=Path, default=Path(".dreamrsi/inspector.sqlite3"))
+    watch_parser.add_argument(
+        "--port", type=int, default=0, help="Local port; 0 selects a free port"
+    )
+    watch_parser.add_argument(
+        "--no-browser", action="store_true", help="Print the URL without opening it"
+    )
+    watch_parser.add_argument(
+        "--demo", action="store_true", help="Run a deterministic demo, no LLM"
+    )
+    watch_parser.add_argument("--export", type=Path, help="Save an offline HTML report and exit")
+    watch_parser.set_defaults(handler=_cmd_watch)
+
+    init_parser = commands.add_parser("init", help="Create a small inspector integration example")
+    init_parser.add_argument("--output", type=Path, default=Path("dreamrsi_app.py"))
+    init_parser.set_defaults(handler=_cmd_init)
+
+    doctor_parser = commands.add_parser("doctor", help="Check local setup without model requests")
+    doctor_parser.add_argument("--journal", type=Path, default=Path(".dreamrsi/inspector.sqlite3"))
+    doctor_parser.set_defaults(handler=_cmd_doctor)
+
+    inspect_parser = commands.add_parser("inspect", help="Summarize a local policy bundle")
+    inspect_parser.add_argument("path", type=Path)
+    inspect_parser.set_defaults(handler=_cmd_inspect)
 
     list_parser = commands.add_parser("list", help="List public packages by GitHub stars")
     list_parser.add_argument(
@@ -577,6 +603,119 @@ def build_parser() -> argparse.ArgumentParser:
     publish_parser.add_argument("path", help="Path to a .dreamrsi.json bundle")
     publish_parser.set_defaults(handler=_cmd_publish)
     return parser
+
+
+def _cmd_watch(args: argparse.Namespace) -> int:
+    import threading
+    import webbrowser
+
+    from dreamrsi.inspector import InspectorServer, LiveInspector
+    from dreamrsi.inspector.journal import InspectorReader
+    from dreamrsi.inspector.server import export_html
+
+    if not 0 <= args.port <= 65535:
+        raise ConfigurationError("Choose a port from 0 to 65535")
+    if args.demo and args.export:
+        raise ConfigurationError("Run the demo first; export its recorded journal separately")
+    journal = args.journal
+    if args.demo and journal == Path(".dreamrsi/inspector.sqlite3"):
+        journal = Path(".dreamrsi/demo-inspector.sqlite3")
+    if args.export:
+        snapshot = InspectorReader(journal).snapshot()
+        if not snapshot.get("runs"):
+            raise ConfigurationError("No inspector run recorded at this journal path")
+        args.export.parent.mkdir(parents=True, exist_ok=True)
+        with args.export.open("x", encoding="utf-8") as stream:
+            stream.write(export_html(snapshot))
+        print(f"Saved report: {args.export.resolve()}")
+        return 0
+    stop = threading.Event()
+    inspector = None
+    worker = None
+    with InspectorServer(journal, port=args.port) as server:
+        try:
+            if args.demo:
+                from dreamrsi.inspector.demo import run_demo
+                inspector = LiveInspector(journal)
+                worker = threading.Thread(target=lambda: asyncio.run(run_demo(inspector, stop)),
+                                          name="dreamrsi-demo", daemon=True)
+                worker.start()
+            print(f"Dream-RSI Inspector: {server.url}", flush=True)
+            print(f"Journal: {journal.resolve()}", flush=True)
+            print("Local simulation, no LLM requests." if args.demo else
+                  "Read-only viewer. Connect LiveInspector() to your SDK runtime.", flush=True)
+            print("Press Ctrl+C to stop the viewer.", flush=True)
+            if not args.no_browser:
+                webbrowser.open(server.url)
+            while not stop.wait(1):
+                pass
+        finally:
+            stop.set()
+            if worker is not None:
+                worker.join(timeout=3)
+            if inspector is not None:
+                inspector.close()
+    return 0
+
+
+def _cmd_init(args: argparse.Namespace) -> int:
+    content = '''"""Local interface demo; replace agent/evaluator with your own integration."""
+import asyncio
+from dreamrsi import Budget, DreamRSI, LiveInspector
+
+async def agent(task):
+    await asyncio.sleep(0.8)
+    return {"answer": task.upper()}
+
+def evaluate(answer):
+    return float(len(answer["answer"]))
+
+async def main():
+    with LiveInspector() as inspector:
+        sdk = DreamRSI(agent=agent, evaluator=evaluate,
+                       budget=Budget(model_calls=4, max_parallelism=1),
+                       inspector=inspector)
+        result = await sdk.run("hello")
+        print(result.report())
+
+if __name__ == "__main__":
+    asyncio.run(main())
+'''
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("x", encoding="utf-8") as stream:
+        stream.write(content)
+    print(f"Created: {args.output.resolve()}")
+    print(f'Run: python "{args.output}"')
+    print("In another terminal: dreamrsi watch")
+    return 0
+
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    from importlib.resources import files
+
+    from dreamrsi import __version__
+    from dreamrsi.inspector.journal import InspectorReader
+
+    assets = files("dreamrsi.inspector").joinpath("ui")
+    for name in ("index.html", "style.css", "app.js"):
+        if not assets.joinpath(name).is_file():
+            raise ConfigurationError(f"Missing viewer asset {name}; reinstall this SDK checkout")
+    snapshot = InspectorReader(args.journal).snapshot()
+    print(f"Dream-RSI {__version__} / Python {sys.version.split()[0]}: OK")
+    print("Bundled viewer: OK (no Node.js or external assets needed)")
+    print(f"Journal: {args.journal.resolve()}")
+    print(f"Recorded runs: {len(snapshot['runs'])}")
+    print("Start: dreamrsi watch --demo" if not snapshot["runs"] else "Open: dreamrsi watch")
+    print("Model requests: none")
+    return 0
+
+
+def _cmd_inspect(args: argparse.Namespace) -> int:
+    entries, policies, worlds = _validate_bundle_file(args.path)
+    print(f"Bundle: {args.path.resolve()}")
+    print(f"Families: {len(entries)} / Policy versions: {policies} / Replay trees: {worlds}")
+    print("Integrity and codecs: valid. This does not prove quality on your tasks.")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

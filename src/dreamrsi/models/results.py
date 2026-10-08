@@ -27,6 +27,12 @@ class RunResult:
     policy_history: list[Any] = field(default_factory=list)
     worlds: list[ReplayWorld] = field(default_factory=list)
 
+    def report(self) -> str:
+        """Return a readable run summary without calling a model."""
+        from dreamrsi.reporting import run_report
+
+        return run_report(self)
+
 
 @dataclass
 class CampaignResult:

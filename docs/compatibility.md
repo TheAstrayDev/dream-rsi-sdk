@@ -32,10 +32,16 @@ must be documented in release notes; private runtime internals carry no such pro
 
 ## Quality preservation and economy planning
 
-The locally prepared 0.3.0b1 source adds optional `quality=QualityContract(...)` and
-`economy=EconomyPlan(...)` arguments. The APIs below are available in this checkout;
-this guide does not claim that a Beta wheel has already been published to PyPI.
-For local verification, install the checkout with `python -m pip install -e .`.
+`LiveInspector` is an optional observer introduced in 0.3.0b2. Attach it through
+`DreamRSI(..., inspector=inspector)`; omitting it preserves the previous integration.
+`PolicyDecision.reason` is optional. The local journal and standalone HTML report
+are observation artifacts, separate from policy bundles and campaign checkpoints.
+Capture does not steer search but adds CPU/disk overhead. See the
+[Inspector guide](inspector.md) for limits, privacy settings and comparisons.
+
+Beta releases include optional `quality=QualityContract(...)` and
+`economy=EconomyPlan(...)` arguments. Install the current package with
+`python -m pip install --pre --upgrade dreamrsi==0.3.0b2`.
 
 `QualityContract(preserve_policy=True)` keeps the supplied baseline policy's complete
 decisions and skips optimizer/developer rewrites. The SDK selects results by the
